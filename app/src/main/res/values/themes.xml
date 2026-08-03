@@ -1,0 +1,8 @@
+<resources>
+
+    <style name="Base.Theme.HeavyRental" parent="android:style/Theme.Material.Light.NoActionBar">
+    </style>
+
+    <style name="Theme.HeavyRental" parent="Base.Theme.HeavyRental" />
+
+</resources>
