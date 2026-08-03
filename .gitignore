@@ -13,3 +13,7 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Node mock tooling (Prism / Mockoon)
+/node_modules/
+/mocks/.generated/

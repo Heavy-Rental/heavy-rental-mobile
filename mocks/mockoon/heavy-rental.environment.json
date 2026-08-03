@@ -1,0 +1,339 @@
+{
+  "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "lastMigration": 33,
+  "name": "Heavy Rental API",
+  "endpointPrefix": "",
+  "latency": 0,
+  "port": 8081,
+  "hostname": "0.0.0.0",
+  "folders": [],
+  "routes": [
+    {
+      "uuid": "11111111-1111-4111-8111-111111111101",
+      "type": "http",
+      "documentation": "List all bookings (primary v1 client load)",
+      "method": "get",
+      "endpoint": "api/bookings",
+      "responses": [
+        {
+          "uuid": "22222222-2222-4222-8222-222222222201",
+          "body": "",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "200 — bookings from specification/api/examples",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "FILE",
+          "filePath": "../../specification/api/examples/bookings.json",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "11111111-1111-4111-8111-111111111102",
+      "type": "http",
+      "documentation": "Get a single booking",
+      "method": "get",
+      "endpoint": "api/bookings/:bookingId",
+      "responses": [
+        {
+          "uuid": "22222222-2222-4222-8222-222222222202",
+          "body": "",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "200 — sample booking item",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "FILE",
+          "filePath": "../.generated/booking-item.json",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "11111111-1111-4111-8111-111111111103",
+      "type": "http",
+      "documentation": "Replace a booking (echo-style mock)",
+      "method": "put",
+      "endpoint": "api/bookings/:bookingId",
+      "responses": [
+        {
+          "uuid": "22222222-2222-4222-8222-222222222203",
+          "body": "",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "200 — sample booking item",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "FILE",
+          "filePath": "../.generated/booking-item.json",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "11111111-1111-4111-8111-111111111104",
+      "type": "http",
+      "documentation": "Today's deliveries",
+      "method": "get",
+      "endpoint": "api/deliveries",
+      "responses": [
+        {
+          "uuid": "22222222-2222-4222-8222-222222222204",
+          "body": "",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "200 — deliveries from specification/api/examples",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "FILE",
+          "filePath": "../../specification/api/examples/deliveries.json",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "11111111-1111-4111-8111-111111111105",
+      "type": "http",
+      "documentation": "Update delivery status (CONFIRMED → MOBILISED)",
+      "method": "patch",
+      "endpoint": "api/deliveries/:bookingId/status",
+      "responses": [
+        {
+          "uuid": "22222222-2222-4222-8222-222222222205",
+          "body": "",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "200 — sample delivery item",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "FILE",
+          "filePath": "../.generated/delivery-item.json",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "11111111-1111-4111-8111-111111111106",
+      "type": "http",
+      "documentation": "Today's returns",
+      "method": "get",
+      "endpoint": "api/returns",
+      "responses": [
+        {
+          "uuid": "22222222-2222-4222-8222-222222222206",
+          "body": "",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "200 — returns from specification/api/examples",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "FILE",
+          "filePath": "../../specification/api/examples/returns.json",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "11111111-1111-4111-8111-111111111107",
+      "type": "http",
+      "documentation": "Update return status (MOBILISED → COMPLETED)",
+      "method": "patch",
+      "endpoint": "api/returns/:bookingId/status",
+      "responses": [
+        {
+          "uuid": "22222222-2222-4222-8222-222222222207",
+          "body": "",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "200 — sample return item",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "FILE",
+          "filePath": "../.generated/return-item.json",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    }
+  ],
+  "rootChildren": [
+    {
+      "type": "route",
+      "uuid": "11111111-1111-4111-8111-111111111101"
+    },
+    {
+      "type": "route",
+      "uuid": "11111111-1111-4111-8111-111111111102"
+    },
+    {
+      "type": "route",
+      "uuid": "11111111-1111-4111-8111-111111111103"
+    },
+    {
+      "type": "route",
+      "uuid": "11111111-1111-4111-8111-111111111104"
+    },
+    {
+      "type": "route",
+      "uuid": "11111111-1111-4111-8111-111111111105"
+    },
+    {
+      "type": "route",
+      "uuid": "11111111-1111-4111-8111-111111111106"
+    },
+    {
+      "type": "route",
+      "uuid": "11111111-1111-4111-8111-111111111107"
+    }
+  ],
+  "proxyMode": false,
+  "proxyHost": "",
+  "proxyRemovePrefix": false,
+  "tlsOptions": {
+    "enabled": false,
+    "type": "CERT",
+    "pfxPath": "",
+    "certPath": "",
+    "keyPath": "",
+    "caPath": "",
+    "passphrase": ""
+  },
+  "cors": true,
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json"
+    },
+    {
+      "key": "Access-Control-Allow-Origin",
+      "value": "*"
+    },
+    {
+      "key": "Access-Control-Allow-Methods",
+      "value": "GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD"
+    },
+    {
+      "key": "Access-Control-Allow-Headers",
+      "value": "Content-Type, Authorization"
+    }
+  ],
+  "proxyReqHeaders": [
+    {
+      "key": "",
+      "value": ""
+    }
+  ],
+  "proxyResHeaders": [
+    {
+      "key": "",
+      "value": ""
+    }
+  ],
+  "data": [],
+  "callbacks": []
+}

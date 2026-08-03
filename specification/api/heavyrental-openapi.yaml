@@ -1,0 +1,325 @@
+openapi: 3.0.3
+info:
+  title: Heavy Rental API
+  description: |
+    HTTP API for the Heavy Rental mobile operations app (deliveries & returns).
+
+    **v1 mobile client behaviour:**
+    - Loads data primarily via `GET /api/bookings`.
+    - Derives today's delivery/return lists on the client (see specification/domain/list-filters.md).
+    - Updates status via delivery/return PATCH endpoints.
+    - Auth is not part of this API in v1 (client-only login).
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8081
+    description: Local mock / host machine
+  - url: http://10.0.2.2:8081
+    description: Android emulator → host localhost
+
+tags:
+  - name: Bookings
+  - name: Deliveries
+  - name: Returns
+
+paths:
+  /api/bookings:
+    get:
+      tags: [Bookings]
+      operationId: getBookings
+      summary: List all bookings
+      description: Primary data load for the v1 Android client.
+      responses:
+        "200":
+          description: Array of bookings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Booking"
+              examples:
+                sample:
+                  $ref: "#/components/examples/BookingList"
+
+  /api/bookings/{bookingId}:
+    parameters:
+      - $ref: "#/components/parameters/BookingId"
+    get:
+      tags: [Bookings]
+      operationId: getBooking
+      summary: Get a single booking
+      responses:
+        "200":
+          description: Booking found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+        "404":
+          description: Booking not found
+    put:
+      tags: [Bookings]
+      operationId: updateBooking
+      summary: Replace a booking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Booking"
+      responses:
+        "200":
+          description: Updated booking
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+        "404":
+          description: Booking not found
+
+  /api/deliveries:
+    get:
+      tags: [Deliveries]
+      operationId: getTodaysDeliveries
+      summary: Today's delivery items
+      description: |
+        Bookings with startDate = today and status CONFIRMED or MOBILISED.
+        Optional for v1 client (client may derive from GET /api/bookings).
+      responses:
+        "200":
+          description: Today's deliveries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DeliveryItem"
+              examples:
+                sample:
+                  $ref: "#/components/examples/DeliveryList"
+
+  /api/deliveries/{bookingId}/status:
+    parameters:
+      - $ref: "#/components/parameters/BookingId"
+    patch:
+      tags: [Deliveries]
+      operationId: updateDeliveryStatus
+      summary: Update delivery booking status
+      description: |
+        v1 client uses this for CONFIRMED → MOBILISED.
+        Body field bookingStatus must be a valid BookingStatus string.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatusUpdateRequest"
+            examples:
+              mobilise:
+                value:
+                  bookingStatus: MOBILISED
+      responses:
+        "200":
+          description: Updated delivery item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliveryItem"
+        "400":
+          description: Invalid transition or body
+        "404":
+          description: Booking not found
+
+  /api/returns:
+    get:
+      tags: [Returns]
+      operationId: getTodaysReturns
+      summary: Today's return items
+      description: |
+        Bookings with endDate = today and status MOBILISED or COMPLETED.
+        Optional for v1 client (client may derive from GET /api/bookings).
+      responses:
+        "200":
+          description: Today's returns
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReturnItem"
+              examples:
+                sample:
+                  $ref: "#/components/examples/ReturnList"
+
+  /api/returns/{bookingId}/status:
+    parameters:
+      - $ref: "#/components/parameters/BookingId"
+    patch:
+      tags: [Returns]
+      operationId: updateReturnStatus
+      summary: Update return booking status
+      description: |
+        v1 client uses this for MOBILISED → COMPLETED.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatusUpdateRequest"
+            examples:
+              complete:
+                value:
+                  bookingStatus: COMPLETED
+      responses:
+        "200":
+          description: Updated return item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReturnItem"
+        "400":
+          description: Invalid transition or body
+        "404":
+          description: Booking not found
+
+components:
+  parameters:
+    BookingId:
+      name: bookingId
+      in: path
+      required: true
+      schema:
+        type: string
+        example: DLV-003
+
+  schemas:
+    BookingStatus:
+      type: string
+      enum: [CONFIRMED, MOBILISED, COMPLETED]
+      description: Hire lifecycle status (see specification/domain/booking-status-machine.md)
+
+    Booking:
+      type: object
+      required:
+        - bookingId
+        - customerName
+        - startDate
+        - endDate
+        - bookingStatus
+        - projectLocation
+        - assetName
+        - serialNumber
+        - quantity
+      properties:
+        bookingId:
+          type: string
+          example: DLV-001
+        customerName:
+          type: string
+          example: Lim Construction Pte Ltd
+        startDate:
+          type: string
+          format: date
+          description: ISO-8601 date (yyyy-MM-dd)
+          example: "2026-08-03"
+        endDate:
+          type: string
+          format: date
+          example: "2026-08-10"
+        bookingStatus:
+          $ref: "#/components/schemas/BookingStatus"
+        projectLocation:
+          type: string
+          example: 18 Tuas South Ave 14, Singapore 637471
+        assetName:
+          type: string
+          example: CAT 320 Hydraulic Excavator
+        serialNumber:
+          type: string
+          example: CAT 320 GC
+        quantity:
+          type: integer
+          minimum: 1
+          example: 1
+
+    DeliveryItem:
+      type: object
+      required:
+        - bookingId
+        - customerName
+        - startDate
+        - projectLocation
+        - assetName
+        - serialNumber
+        - quantity
+        - bookingStatus
+      properties:
+        bookingId:
+          type: string
+        customerName:
+          type: string
+        startDate:
+          type: string
+          format: date
+        projectLocation:
+          type: string
+        assetName:
+          type: string
+        serialNumber:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+        bookingStatus:
+          $ref: "#/components/schemas/BookingStatus"
+
+    ReturnItem:
+      type: object
+      required:
+        - bookingId
+        - customerName
+        - endDate
+        - projectLocation
+        - assetName
+        - serialNumber
+        - quantity
+        - bookingStatus
+      properties:
+        bookingId:
+          type: string
+        customerName:
+          type: string
+        endDate:
+          type: string
+          format: date
+        projectLocation:
+          type: string
+        assetName:
+          type: string
+        serialNumber:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+        bookingStatus:
+          $ref: "#/components/schemas/BookingStatus"
+
+    StatusUpdateRequest:
+      type: object
+      required:
+        - bookingStatus
+      properties:
+        bookingStatus:
+          $ref: "#/components/schemas/BookingStatus"
+
+  examples:
+    BookingList:
+      summary: Sample bookings (fixed date 2026-08-03 as "today")
+      externalValue: ./examples/bookings.json
+    DeliveryList:
+      summary: Sample deliveries
+      externalValue: ./examples/deliveries.json
+    ReturnList:
+      summary: Sample returns
+      externalValue: ./examples/returns.json

@@ -1,0 +1,16 @@
+{
+  "name": "heavy-rental-mobile-app-mocks",
+  "private": true,
+  "description": "OpenAPI-driven mock servers (Prism + Mockoon) for Heavy Rental",
+  "scripts": {
+    "mock:prepare": "node scripts/prepare-mocks.mjs",
+    "mock:prism": "node scripts/start-prism.mjs",
+    "mock:mockoon": "node scripts/start-mockoon.mjs",
+    "mock:verify": "node scripts/verify-mock.mjs"
+  },
+  "devDependencies": {
+    "@mockoon/cli": "^9.3.0",
+    "@stoplight/prism-cli": "^5.14.2",
+    "yaml": "^2.7.0"
+  }
+}
