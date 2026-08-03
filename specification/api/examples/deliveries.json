@@ -1,0 +1,62 @@
+[
+  {
+    "bookingId": "DLV-001",
+    "customerName": "Lim Construction Pte Ltd",
+    "startDate": "2026-08-03",
+    "projectLocation": "18 Tuas South Ave 14, Singapore 637471",
+    "assetName": "CAT 320 Hydraulic Excavator",
+    "serialNumber": "CAT 320 GC",
+    "quantity": 1,
+    "bookingStatus": "MOBILISED"
+  },
+  {
+    "bookingId": "DLV-002",
+    "customerName": "Sembcorp Marine Ltd",
+    "startDate": "2026-08-03",
+    "projectLocation": "80 Tuas South Blvd, Singapore 637051",
+    "assetName": "Komatsu D65 Bulldozer",
+    "serialNumber": "D65EX-18",
+    "quantity": 1,
+    "bookingStatus": "MOBILISED"
+  },
+  {
+    "bookingId": "DLV-003",
+    "customerName": "Jurong Port Pte Ltd",
+    "startDate": "2026-08-03",
+    "projectLocation": "Jurong Port Road, Singapore 619110",
+    "assetName": "JLG 1350SJP Telescopic Boom",
+    "serialNumber": "1350SJP",
+    "quantity": 2,
+    "bookingStatus": "CONFIRMED"
+  },
+  {
+    "bookingId": "DLV-004",
+    "customerName": "Jurong Port Pte Ltd",
+    "startDate": "2026-08-03",
+    "projectLocation": "Jurong Port Road, Singapore 619110",
+    "assetName": "JLG 1350SJP Telescopic Boom",
+    "serialNumber": "1350SJP",
+    "quantity": 3,
+    "bookingStatus": "CONFIRMED"
+  },
+  {
+    "bookingId": "DLV-005",
+    "customerName": "Sembcorp Marine Ltd",
+    "startDate": "2026-08-03",
+    "projectLocation": "80 Tuas South Blvd, Singapore 637051",
+    "assetName": "Komatsu D65 Bulldozer",
+    "serialNumber": "D65EX-18",
+    "quantity": 3,
+    "bookingStatus": "MOBILISED"
+  },
+  {
+    "bookingId": "DLV-006",
+    "customerName": "Tiong Seng Contractors",
+    "startDate": "2026-08-03",
+    "projectLocation": "1 Woodlands Industrial Park E1, Singapore 757700",
+    "assetName": "Volvo EC480E Excavator",
+    "serialNumber": "EC480E L",
+    "quantity": 1,
+    "bookingStatus": "CONFIRMED"
+  }
+]

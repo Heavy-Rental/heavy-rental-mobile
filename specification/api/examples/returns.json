@@ -1,0 +1,42 @@
+[
+  {
+    "bookingId": "RET-001",
+    "customerName": "Keppel Infrastructure",
+    "endDate": "2026-08-03",
+    "projectLocation": "1 Maritime Square, Harbourfront, Singapore 099253",
+    "assetName": "Liebherr LTM 1100 Mobile Crane",
+    "serialNumber": "LTM 1100-5.2",
+    "quantity": 1,
+    "bookingStatus": "COMPLETED"
+  },
+  {
+    "bookingId": "RET-002",
+    "customerName": "Changi Airport Group",
+    "endDate": "2026-08-03",
+    "projectLocation": "Airport Logistics Park, 11 Airport Cargo Road, Singapore 819466",
+    "assetName": "Toyota 8FBE15 Electric Forklift",
+    "serialNumber": "8FBE15",
+    "quantity": 3,
+    "bookingStatus": "MOBILISED"
+  },
+  {
+    "bookingId": "RET-003",
+    "customerName": "Changi Airport Group",
+    "endDate": "2026-08-03",
+    "projectLocation": "Airport Logistics Park, 11 Airport Cargo Road, Singapore 819466",
+    "assetName": "Toyota 8FBE15 Electric Forklift",
+    "serialNumber": "8FBE15",
+    "quantity": 5,
+    "bookingStatus": "MOBILISED"
+  },
+  {
+    "bookingId": "RET-004",
+    "customerName": "Poh Tiong Choon Logistics",
+    "endDate": "2026-08-03",
+    "projectLocation": "5 Pandan Road, Singapore 609254",
+    "assetName": "CAT 320 Hydraulic Excavator",
+    "serialNumber": "CAT 320 GC",
+    "quantity": 1,
+    "bookingStatus": "MOBILISED"
+  }
+]
