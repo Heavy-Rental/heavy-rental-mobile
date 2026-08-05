@@ -77,10 +77,9 @@ Feature: Deliveries
 
   Scenario: Operator mobilises a confirmed delivery
     Given a delivery item with bookingId "DLV-003" and status CONFIRMED
-    And startDate is today
     When the operator confirms mobilisation for that item
-    Then the booking status becomes MOBILISED
-    And the deliveries and returns derived lists are refreshed
+    Then the delivery item status becomes MOBILISED
+    And the in-memory deliveries list is updated for that bookingId
     And the app attempts PATCH /api/deliveries/{bookingId}/status
     And the request body includes bookingStatus "MOBILISED"
 
@@ -119,11 +118,30 @@ Offline behaviour: [product/05-offline-fallback.md](05-offline-fallback.md).
 
 | Step | Behaviour |
 |------|-----------|
-| Load | Prefer `GET /api/bookings`; map to domain `Booking` |
-| Derive list | Client applies delivery filter (`startDate` + status) via `toDeliveryItems()` |
+| Load list | **`GET /api/deliveries`** → map each `DeliveryItem` DTO to domain `DeliveryItem` |
+| Display | Use the API payload as the Delivery List (server/mock already applies “today’s deliveries” membership) |
+| UI chips | Client-side only: All / Confirmed / Mobilised on the loaded list |
+| Seed / offline | Until the list API succeeds (or if it fails), seed from `MockDataRepository` via `toDeliveryItems()` — see [05-offline-fallback.md](05-offline-fallback.md) |
+| Bookings | `GET /api/bookings` may still load for shared booking state; **must not** replace the delivery list by re-filtering bookings with device “today” |
 | Update | `PATCH /api/deliveries/{bookingId}/status` with `{ "bookingStatus": "MOBILISED" }` |
 
-Note: `GET /api/deliveries` exists in the API contract for backend/mocks but the **v1 client derives the list from bookings**. See [decisions/001-openapi-as-api-source.md](../decisions/001-openapi-as-api-source.md).
+```gherkin
+  Scenario: Delivery list loads from the deliveries endpoint
+    Given the auth session is ready
+    When the app loads list data
+    Then the client calls GET /api/deliveries
+    And the Delivery List shows the returned items
+    And the client does not drop rows solely because startDate differs from device LocalDate.now()
+
+  Scenario: Deliveries API failure keeps seed
+    Given seed delivery items are shown
+    When GET /api/deliveries fails
+    Then the Delivery List still shows seed data
+    And a network error is surfaced
+```
+
+Membership rules the **server/mock** should apply when building the payload: [domain/list-filters.md](../domain/list-filters.md).  
+Contract: [api/heavyrental-openapi.yaml](../api/heavyrental-openapi.yaml), examples: [api/examples/deliveries.json](../api/examples/deliveries.json).
 
 ---
 
@@ -141,6 +159,8 @@ Note: `GET /api/deliveries` exists in the API contract for backend/mocks but the
 | Concern | Location |
 |---------|----------|
 | UI + filters + maps + confirm dialog | `ui/screens/DeliveryListScreen.kt` |
-| Transition | `viewmodel/AppViewModel.kt` — `updateDeliveryStatus` |
-| API | `data/repository/BookingRepository.kt` → `network/HeavyRentalApiService` |
-| Derive | `data/models/Bookings.kt` — `List<Booking>.toDeliveryItems()` |
+| Load + transition | `viewmodel/AppViewModel.kt` — `loadData` / `updateDeliveryStatus` |
+| API | `data/repository/BookingRepository.kt` — `getTodaysDeliveries`, `updateDeliveryStatus` |
+| Paths | `network/dto/HeavyRentalApiService.kt` — `GET api/deliveries` |
+| DTO map | `network/dto/Mappers.kt` — `DeliveryItemDto.toDeliveryItem()` |
+| Seed derive only | `data/models/Bookings.kt` — `List<Booking>.toDeliveryItems()` |

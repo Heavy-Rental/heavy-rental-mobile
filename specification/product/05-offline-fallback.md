@@ -8,16 +8,19 @@
 
 ## Summary
 
-The mobile app must remain **usable for demos and field work** when the backend or mock server is unreachable. Failures are visible, but core status changes still apply **locally**.
+The mobile app must remain **usable for demos and field work** when the backend or mock server is unreachable **after** the operator has authenticated. Failures are visible, but core status changes still apply **locally**.
+
+**Boundary:** this feature covers **bookings load** and **status PATCH** fallback. **Login** requires a reachable auth API and surfaces errors on the login screen (`loginError`), not the shell banner. See [01-login.md](01-login.md).
 
 ---
 
 ## Principles
 
 1. **Never blank the main lists** because the network failed.
-2. **Always surface** a human-readable error when API sync fails.
+2. **Always surface** a human-readable error when list/status API sync fails.
 3. **Optimistic domain updates** for allowed status transitions: update local state even if PATCH fails.
-4. **Mock seed** provides initial data so the UI has content before the first successful API response.
+4. **Mock seed** provides initial booking data so the UI has content before the first successful API response (and when load fails).
+5. **Login is not offline** — entry requires a successful interim → access handshake against Mockoon/Prism/Spring.
 
 ---
 
@@ -31,24 +34,31 @@ Feature: Offline fallback
   Scenario: Seed data shown before or without API
     Given the app starts
     Then bookings are initialised from MockDataRepository.bookingList
-    And delivery and return lists are derived from that data
+    And delivery and return lists are derived from that seed via toDeliveryItems / toReturnItems
 
-  Scenario: Successful API load replaces seed
+  Scenario: Successful list API load replaces seed lists
     Given seed or previous data is shown
+    When GET /api/deliveries succeeds
+    Then the deliveries list is replaced with the API payload
+    When GET /api/returns succeeds
+    Then the returns list is replaced with the API payload
+    And the network error banner is cleared for successful loads
+
+  Scenario: Successful bookings load replaces booking seed only
+    Given seed bookings are shown
     When GET /api/bookings succeeds
     Then bookings are replaced with the API payload
-    And derived lists refresh
-    And the network error banner is cleared
+    And the deliveries and returns lists are not rebuilt solely by re-filtering bookings with device today
 
-  Scenario: Failed API load keeps seed and shows error
-    Given seed data is shown
-    When GET /api/bookings fails
-    Then bookings remain the seed (or previous) data
+  Scenario: Failed list API load keeps seed and shows error
+    Given seed delivery and return lists are shown
+    When GET /api/deliveries or GET /api/returns fails
+    Then the corresponding list remains the seed (or previous) data
     And networkError is set to a message indicating mock/local data is shown
     And the error banner is visible in the app shell
 ```
 
-**Error copy (load)** — set in `AppViewModel.loadBookings`:
+**Error copy (load)** — set in `AppViewModel.loadData` (or equivalent):
 
 ```text
 Could not reach API — showing mock data. ({exception message})
@@ -88,9 +98,23 @@ Invalid transitions are **silently ignored** (no local change, no required error
 
 When `networkError != null`, `HeavyRentalApp` shows a top banner using the Material3 error container colours, with the error string as body text. Banner is only shown for the authenticated shell (not on the login screen).
 
+### Login vs offline (explicit)
+
+```gherkin
+  Scenario: Unreachable mock during login does not use seed-as-auth
+    Given the user is on the login screen
+    When the user submits login
+    And the auth API is unreachable
+    Then the user remains logged out
+    And loginError is shown on the login screen
+    And the shell networkError banner is not shown
+```
+
 ---
 
 ## Network configuration (dev)
+
+Default is **Mockoon/Prism on port 8081** (app emulator base URL matches OpenAPI):
 
 | Context | Base URL |
 |---------|----------|
@@ -98,7 +122,7 @@ When `networkError != null`, `HeavyRentalApp` shows a top banner using the Mater
 | Host machine / curl | `http://localhost:8081/` or `http://127.0.0.1:8081/` |
 | Physical device | Host LAN IP, e.g. `http://192.168.x.x:8081/` (must match `RetrofitInstance`) |
 
-Configured in: `network/RetrofitInstance.kt` (`BASE_URL`).  
+Configured in: `network/dto/RetrofitInstance.kt` (`BASE_URL`).  
 Cleartext HTTP is used in dev; see `res/xml/network_security_config.xml`.
 
 Mock servers: [`mocks/README.md`](../../mocks/README.md) and [api/README.md](../api/README.md).
@@ -120,6 +144,6 @@ Mock servers: [`mocks/README.md`](../../mocks/README.md) and [api/README.md](../
 | Concern | Location |
 |---------|----------|
 | Seed | `data/repository/MockDataRepository.kt` — `bookingList` |
-| Load fallback | `viewmodel/AppViewModel.kt` — `loadBookings` |
+| Load fallback | `viewmodel/AppViewModel.kt` — `loadData` |
 | Status fallback | `viewmodel/AppViewModel.kt` — `updateBookingStatus` |
 | Banner | `MainActivity.kt` — `HeavyRentalApp` when `networkError != null` |

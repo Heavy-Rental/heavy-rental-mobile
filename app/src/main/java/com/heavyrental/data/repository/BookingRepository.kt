@@ -1,10 +1,13 @@
 package com.heavyrental.data.repository
 
-import com.heavyrental.network.RetrofitInstance
-import com.heavyrental.network.dto.BookingDto
 import com.heavyrental.data.models.Booking
 import com.heavyrental.data.models.BookingStatus
-import java.time.LocalDate
+import com.heavyrental.data.models.DeliveryItem
+import com.heavyrental.data.models.ReturnItem
+import com.heavyrental.network.RetrofitInstance
+import com.heavyrental.network.toBooking
+import com.heavyrental.network.toDeliveryItem
+import com.heavyrental.network.toReturnItem
 import com.heavyrental.network.dto.StatusUpdateRequest
 
 class BookingRepository {
@@ -21,19 +24,14 @@ class BookingRepository {
         api.updateReturnStatus(bookingId, StatusUpdateRequest(bookingStatus = newStatus.name))
     }
 
-    suspend fun getBookings(): List<Booking> {
-        return api.getBookings().map { dto ->
-            Booking(
-                bookingId = dto.bookingId,
-                customerName = dto.customerName,
-                assetName = dto.assetName,
-                serialNumber = dto.serialNumber,
-                quantity = dto.quantity,
-                projectLocation = dto.projectLocation,
-                startDate = LocalDate.parse(dto.startDate),
-                endDate = LocalDate.parse(dto.endDate),
-                bookingStatus = BookingStatus.valueOf(dto.bookingStatus)
-            )
-        }
-    }
+    suspend fun getBookings(): List<Booking> =
+        api.getBookings().map { it.toBooking() }
+
+    /** GET /api/deliveries — server/mock already applies today's delivery membership. */
+    suspend fun getTodaysDeliveries(): List<DeliveryItem> =
+        api.getTodaysDeliveries().map { it.toDeliveryItem() }
+
+    /** GET /api/returns — server/mock already applies today's return membership. */
+    suspend fun getTodaysReturns(): List<ReturnItem> =
+        api.getTodaysReturns().map { it.toReturnItem() }
 }

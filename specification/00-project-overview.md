@@ -25,7 +25,7 @@ The app is built with **Specification Driven Development (SDD)**: product scenar
 | **Mobilise deliveries** | Mark confirmed bookings as mobilised when equipment is sent out |
 | **Complete returns** | Mark mobilised bookings as completed when equipment is returned |
 | **Field-friendly** | Open project locations in maps; remain usable if the API is down |
-| **Demo-ready without backend** | In-app seed data + optional Mockoon/Prism on port `8081` |
+| **Demo-ready without backend** | In-app seed data + OpenAPI-driven Mockoon/Prism on port `8081` (app default base URL) |
 
 ---
 
@@ -35,7 +35,7 @@ The app is built with **Specification Driven Development (SDD)**: product scenar
 |-------|------|
 | **Admin / operator** | Field or office staff who log in, review today’s lists, mobilise deliveries, and complete returns |
 
-v1 has a **single** hardcoded admin (no roles API). See [product/01-login.md](product/01-login.md).
+v1 has a **single** operator role (no roles API). Authentication is via the HTTP interim → access JWT flow. See [product/01-login.md](product/01-login.md).
 
 ---
 
@@ -43,14 +43,14 @@ v1 has a **single** hardcoded admin (no roles API). See [product/01-login.md](pr
 
 | Area | Capability |
 |------|------------|
-| Auth | Client-only login / logout (hardcoded admin credentials) |
+| Auth | Interim → access JWT login / logout over HTTP (`/api/auth/*`); in-memory session |
 | Home | Today’s delivery and return counts by status |
 | Deliveries | Today’s list, filter by status, maps, mobilise (`CONFIRMED` → `MOBILISED`) |
 | Returns | Today’s list, filter by status, maps, complete (`MOBILISED` → `COMPLETED`) |
-| Data load | `GET /api/bookings`; client derives delivery/return lists |
+| Data load | `GET /api/deliveries` + `GET /api/returns` for lists; optional `GET /api/bookings` |
 | Status sync | `PATCH` delivery/return status endpoints |
-| Offline / failure | Seed data + optimistic local status; error banner on API failure |
-| Mocks | OpenAPI-driven Mockoon / Prism; in-app `MockDataRepository` |
+| Offline / failure | Seed data + optimistic local status; error banner on list/status API failure (after login) |
+| Mocks | OpenAPI-driven Mockoon / Prism on `:8081`; in-app `MockDataRepository` for booking seed |
 
 ### Screens
 
@@ -80,7 +80,8 @@ Details: [domain/booking-status-machine.md](domain/booking-status-machine.md), [
 
 Product-level exclusions (see also per-feature “Out of scope” sections):
 
-- Remote authentication, roles, MFA, password reset, session tokens
+- Roles, MFA, password reset, biometric login, secure token storage
+- Offline / client-only login without a reachable auth API
 - Historical (non-today) dashboards and analytics
 - Rescheduling dates, partial quantity, damage inspection, late fees
 - Photo / signature capture; truck/driver assignment
@@ -101,7 +102,7 @@ Product-level exclusions (see also per-feature “Out of scope” sections):
 | Navigation | Simple shell (`AppScreen` enum) + bottom bar after login |
 | Networking | Retrofit + OkHttp + kotlinx.serialization |
 | API contract | OpenAPI 3 (`specification/api/heavyrental-openapi.yaml`) |
-| Local mocks | `MockDataRepository`; optional Mockoon / Prism on port `8081` |
+| Local mocks | `MockDataRepository` (booking seed); Mockoon / Prism on port `8081` (default HTTP) |
 
 ### High-level architecture
 
@@ -113,21 +114,27 @@ Product-level exclusions (see also per-feature “Out of scope” sections):
                             │
 ┌───────────────────────────▼─────────────────────────────┐
 │  AppViewModel                                           │
-│  auth · loadBookings · status transitions · networkError│
+│  auth · loadData · status transitions · networkError    │
 └───────────────────────────┬─────────────────────────────┘
                             │
-          ┌─────────────────┼─────────────────┐
-          ▼                                   ▼
-┌──────────────────┐               ┌──────────────────────┐
-│ MockDataRepository│               │ BookingRepository    │
-│ (seed / fallback) │               │ → Retrofit API       │
-└──────────────────┘               └──────────┬───────────┘
-                                              │
-                                   HTTP :8081 (dev mock / backend)
-                                   OpenAPI-defined paths
+     ┌──────────────────────┼──────────────────────┐
+     ▼                      ▼                      ▼
+┌──────────────┐  ┌──────────────────┐  ┌──────────────────────┐
+│ AuthRepository│  │ MockDataRepository│  │ BookingRepository    │
+│ TokenSession  │  │ (seed / fallback) │  │ → Retrofit API       │
+└──────┬───────┘  └──────────────────┘  └──────────┬───────────┘
+       │                                           │
+       └───────────────────┬───────────────────────┘
+                           ▼
+              HTTP :8081 (Mockoon / Prism default)
+              OpenAPI-defined paths
+              RetrofitInstance.BASE_URL =
+                http://10.0.2.2:8081/ (emulator)
 ```
 
-**Domain ownership on the client (v1):** after `GET /api/bookings`, the app derives delivery/return lists and enforces status transitions. Dedicated `GET /api/deliveries` and `GET /api/returns` exist in the contract for mocks/backends but are not required for list rendering.
+**Auth (v1):** interim JWT → access JWT handshake; access Bearer attached to business calls. See [product/01-login.md](product/01-login.md).
+
+**List data (v1):** Delivery and Return screens load **`GET /api/deliveries`** and **`GET /api/returns`**. The client enforces allowed status transitions on those lists. Seed/offline still derives lists from `MockDataRepository` via domain filters (`toDeliveryItems` / `toReturnItems`).
 
 ---
 
@@ -150,23 +157,27 @@ Spec vs generated env: [project-environment.md](project-environment.md).
 
 | Field | Value |
 |-------|--------|
-| Email | `admin@heavyrental.com` |
-| Password | `admin123` |
-| Display name | `Admin` |
+| Email | `admin@localhost` |
+| Password | `admin1234` |
+| Display name | `Admin` (from `LoginResponse.username` local-part) |
 
-Source: `MockDataRepository` — must stay aligned with [product/01-login.md](product/01-login.md).
+Aligned with OpenAPI `LoginRequest` examples and the Login screen seed hint. Full behaviour (Mockoon canned vs real Spring validation): [product/01-login.md](product/01-login.md).
 
 ---
 
 ## Development runtime (API)
 
+**Default:** OpenAPI-driven Mockoon or Prism on host port **8081**. The app emulator base URL matches OpenAPI `servers`:
+
 | Client | Base URL |
 |--------|----------|
-| Android emulator → host | `http://10.0.2.2:8081/` |
-| Host machine | `http://localhost:8081/` |
+| Android emulator → host mock | `http://10.0.2.2:8081/` |
+| Host machine / curl | `http://localhost:8081/` |
 | Physical device | `http://<host-lan-ip>:8081/` |
 
-Configured in `RetrofitInstance.BASE_URL`. Mock servers and regeneration: [api/README.md](api/README.md), [project-environment.md](project-environment.md), [`mocks/README.md`](../mocks/README.md).
+Configured in `RetrofitInstance.BASE_URL` (default Mockoon/Prism). An optional real Spring Boot backend is often on host `:8080` and requires changing the base URL deliberately.
+
+Mock servers and regeneration: [api/README.md](api/README.md), [project-environment.md](project-environment.md), [`mocks/README.md`](../mocks/README.md).
 
 ---
 
@@ -181,6 +192,7 @@ Configured in `RetrofitInstance.BASE_URL`. Mock servers and regeneration: [api/R
 | Why OpenAPI / mock layers | [decisions/](decisions/) |
 | What is generated for mocks | [project-environment.md](project-environment.md) |
 | SDD workflow and PR checklist | [README.md](README.md) |
+| Mockoon + Postman + Android testing | [testing-guide.md](testing-guide.md) |
 
 **Conflict resolution order:** product intent → domain rules → API contract → implementation (then align all four).
 
@@ -190,8 +202,8 @@ Configured in `RetrofitInstance.BASE_URL`. Mock servers and regeneration: [api/R
 
 | Topic | Current behaviour |
 |-------|-------------------|
-| Auth | Client-only hardcoded admin |
-| List data | Derived on client from bookings |
+| Auth | API handshake implemented; Mockoon returns canned tokens (no credential check); no secure token storage |
+| List data | Loaded from `GET /api/deliveries` / `GET /api/returns`; seed derive only offline |
 | Status updates | Optimistic local update if PATCH fails |
 | Persistence | In-memory only (no Room / offline queue) |
 
@@ -205,5 +217,6 @@ Configured in `RetrofitInstance.BASE_URL`. Mock servers and regeneration: [api/R
 | State / API orchestration | `viewmodel/AppViewModel.kt` |
 | Screens | `ui/screens/*` |
 | Domain models / filters | `data/models/*` |
-| Seed data | `data/repository/MockDataRepository.kt` |
-| Network | `network/RetrofitInstance.kt`, `HeavyRentalApiService`, `BookingRepository` |
+| Booking seed / offline fallback | `data/repository/MockDataRepository.kt` |
+| Auth handshake | `data/repository/AuthRepository.kt`, `network/TokenSession.kt`, `network/AuthInterceptor.kt` |
+| Network | `network/dto/RetrofitInstance.kt`, `HeavyRentalApiService`, `BookingRepository` |

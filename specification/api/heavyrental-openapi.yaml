@@ -5,8 +5,11 @@ info:
     HTTP API for the Heavy Rental mobile operations app (deliveries & returns).
 
     **v1 mobile client behaviour:**
-    - Loads data primarily via `GET /api/bookings`.
-    - Derives today's delivery/return lists on the client (see specification/domain/list-filters.md).
+    - Loads Delivery List via `GET /api/deliveries` and Return List via
+      `GET /api/returns` (server/mock applies today membership; see
+      specification/domain/list-filters.md).
+    - May also load `GET /api/bookings` for shared booking state; does not
+      rebuild list screens by re-filtering bookings with device LocalDate.now().
     - Updates status via delivery/return PATCH endpoints.
     - Auth is an interim → access JWT handshake (getBearerToken → login → logout).
       Contract mirrors heavy-rental-spring-rest-api's
@@ -203,8 +206,10 @@ paths:
       operationId: getTodaysDeliveries
       summary: Today's delivery items
       description: |
-        Bookings with startDate = today and status CONFIRMED or MOBILISED.
-        Optional for v1 client (client may derive from GET /api/bookings).
+        Bookings with startDate = today and status CONFIRMED or MOBILISED
+        (see specification/domain/list-filters.md). v1 mobile **loads this
+        endpoint for the Delivery List and home delivery counts** — it does
+        not re-filter the response by device LocalDate.now().
       responses:
         "200":
           description: Today's deliveries
@@ -256,8 +261,10 @@ paths:
       operationId: getTodaysReturns
       summary: Today's return items
       description: |
-        Bookings with endDate = today and status MOBILISED or COMPLETED.
-        Optional for v1 client (client may derive from GET /api/bookings).
+        Bookings with endDate = today and status MOBILISED or COMPLETED
+        (see specification/domain/list-filters.md). v1 mobile **loads this
+        endpoint for the Return List and home return counts** — it does not
+        re-filter the response by device LocalDate.now().
       responses:
         "200":
           description: Today's returns

@@ -105,13 +105,19 @@ By design, the environment is derived from the specification so:
 
 ## Android client (dev) alignment
 
+The app’s **default** `RetrofitInstance.BASE_URL` is the Android emulator alias for host Mockoon/Prism, matching OpenAPI `servers` entry `http://10.0.2.2:8081`:
+
 | Client | Base URL |
 |--------|----------|
-| Emulator → host mock | `http://10.0.2.2:8081/` |
+| Emulator → host mock (default) | `http://10.0.2.2:8081/` |
 | Host machine / curl | `http://localhost:8081/` or `http://127.0.0.1:8081/` |
 | Physical device | `http://<host-lan-ip>:8081/` (must match app `RetrofitInstance`) |
 
 App config: `com.heavyrental.network.RetrofitInstance` (`BASE_URL`).
+
+Auth and booking routes are defined in OpenAPI and served by the generated Mockoon env. Product behaviour: [product/01-login.md](product/01-login.md). Mock auth is canned (no real credential verification) — see [api/README.md](api/README.md) and [decisions/002-mock-strategy.md](decisions/002-mock-strategy.md).
+
+List routes (`GET /api/deliveries`, `GET /api/returns`) use **FILE** bodies pointing at `specification/api/examples/deliveries.json` and `returns.json`. The v1 app loads those endpoints for the Delivery and Return screens.
 
 ---
 
