@@ -8,7 +8,13 @@ info:
     - Loads data primarily via `GET /api/bookings`.
     - Derives today's delivery/return lists on the client (see specification/domain/list-filters.md).
     - Updates status via delivery/return PATCH endpoints.
-    - Auth is not part of this API in v1 (client-only login).
+    - Auth is an interim → access JWT handshake (getBearerToken → login → logout).
+      Contract mirrors heavy-rental-spring-rest-api's
+      specification/SPEC-auth-login-logout.md, which is the source of truth for
+      server-side behaviour (password verification, denylist, token claims).
+      **The local Mockoon mock only returns static canned responses for these
+      three routes** — it does not verify credentials or issue real JWTs. Use
+      the real Spring Boot backend to exercise actual login/logout behaviour.
   version: 1.0.0
 
 servers:
@@ -18,11 +24,124 @@ servers:
     description: Android emulator → host localhost
 
 tags:
+  - name: Auth
   - name: Bookings
   - name: Deliveries
   - name: Returns
 
 paths:
+  /api/auth/getBearerToken:
+    get:
+      tags: [Auth]
+      operationId: getBearerToken
+      summary: Mint a short-lived interim JWT
+      description: |
+        Step 1 of login. No credentials required. Response is a raw JWT string
+        (`text/plain`), not JSON. See specification/product/01-login.md.
+
+        Full contract owned by heavy-rental-spring-rest-api's
+        SPEC-request-bearer-token.md — this mock only returns a fixed
+        placeholder token, it does not sign real JWTs.
+      responses:
+        "200":
+          description: Interim JWT (plain text body, not JSON)
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: eyJhbGciOiJIUzI1NiJ9.mock-interim-token-for-local-mock-testing-only.mock-signature
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: Upgrade an interim JWT to an access (session) JWT
+      description: |
+        Step 2 of login. Requires the interim JWT from getBearerToken as a
+        Bearer token, plus email/password in the body. See
+        specification/product/01-login.md and, for full server behaviour,
+        heavy-rental-spring-rest-api's SPEC-auth-login-logout.md §6.1.
+
+        **Mock caveat:** this Mockoon route returns the same canned 200
+        response for any request body — it does not check the password or the
+        interim token. Use the real backend to test 400/401/403 paths.
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+            example: "Bearer <interim-jwt>"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Access JWT issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+              examples:
+                sample:
+                  $ref: "#/components/examples/LoginResponseExample"
+        "400":
+          description: Blank email or password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing/invalid/expired/reused interim token, or wrong credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: An access token (not an interim token) was used as the Bearer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: Revoke the current access JWT
+      description: |
+        Step 4 of the flow. Requires the access JWT (from login) as a Bearer
+        token. See heavy-rental-spring-rest-api's SPEC-auth-login-logout.md §6.2.
+
+        **Mock caveat:** this Mockoon route always returns 200 — it does not
+        validate or actually revoke the Bearer token.
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+            example: "Bearer <access-jwt>"
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+              examples:
+                sample:
+                  $ref: "#/components/examples/LogoutResponseExample"
+        "403":
+          description: An interim token (not an access token) was used as the Bearer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /api/bookings:
     get:
       tags: [Bookings]
@@ -194,6 +313,65 @@ components:
         example: DLV-003
 
   schemas:
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          example: admin@localhost
+        password:
+          type: string
+          example: admin1234
+
+    LoginResponse:
+      type: object
+      required:
+        - accessToken
+        - tokenType
+        - expiresIn
+        - username
+      properties:
+        accessToken:
+          type: string
+          description: Session JWT
+        tokenType:
+          type: string
+          example: Bearer
+        expiresIn:
+          type: integer
+          format: int64
+          description: Seconds until the access token expires
+          example: 3600
+        username:
+          type: string
+          description: Legacy field name — value is the authenticated email
+          example: admin@localhost
+
+    MessageResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          example: Logged out successfully
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          example: invalid_credentials
+        message:
+          type: string
+          example: Invalid email or password.
+
     BookingStatus:
       type: string
       enum: [CONFIRMED, MOBILISED, COMPLETED]
@@ -314,6 +492,12 @@ components:
           $ref: "#/components/schemas/BookingStatus"
 
   examples:
+    LoginResponseExample:
+      summary: Canned access token (mock only — see path description)
+      externalValue: ./examples/login-response.json
+    LogoutResponseExample:
+      summary: Canned logout confirmation (mock only)
+      externalValue: ./examples/logout-response.json
     BookingList:
       summary: Sample bookings (fixed date 2026-08-03 as "today")
       externalValue: ./examples/bookings.json

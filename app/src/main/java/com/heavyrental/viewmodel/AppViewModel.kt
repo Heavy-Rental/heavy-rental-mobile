@@ -12,21 +12,26 @@ import kotlinx.coroutines.flow.asStateFlow
 import com.heavyrental.data.models.Booking
 import com.heavyrental.data.models.toDeliveryItems
 import com.heavyrental.data.models.toReturnItems
+import com.heavyrental.data.repository.AuthRepository
 import com.heavyrental.data.repository.BookingRepository
 import androidx.lifecycle.viewModelScope
 import android.util.Log
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
+import java.io.IOException
 
 
 data class AppState(
     val isLoggedIn: Boolean = false,
     val adminName: String = "",
     val currentScreen: AppScreen = AppScreen.LOGIN,
-    val loginError: String? = null
+    val loginError: String? = null,
+    val isLoggingIn: Boolean = false
 )
 
 class AppViewModel : ViewModel() {
 
+    private val authRepository = AuthRepository()
     private val bookingRepository = BookingRepository()
     private val _state = MutableStateFlow(AppState())
     val state: StateFlow<AppState> = _state.asStateFlow()
@@ -49,24 +54,53 @@ class AppViewModel : ViewModel() {
     val networkError: StateFlow<String?> = _networkError.asStateFlow()
 
     // ────────── Auth ────────────
+    // Interim → access Bearer flow (getBearerToken → login → logout).
+    // See specification/product/01-login.md and AuthRepository.
 
     fun login(email: String, password: String) {
-        if (email.trim().lowercase() == MockDataRepository.ADMIN_EMAIL &&
-            password == MockDataRepository.ADMIN_PASSWORD
-        ) {
-            _state.value = _state.value.copy(
-                isLoggedIn = true,
-                adminName = MockDataRepository.ADMIN_NAME,
-                currentScreen = AppScreen.HOME,
-                loginError = null
-            )
-        } else {
-            _state.value = _state.value.copy(loginError = "Invalid email or password.")
+        if (_state.value.isLoggingIn) return
+
+        _state.value = _state.value.copy(isLoggingIn = true, loginError = null)
+
+        viewModelScope.launch {
+            try {
+                val response = authRepository.login(email, password)
+                _state.value = _state.value.copy(
+                    isLoggedIn = true,
+                    adminName = response.username.substringBefore("@").replaceFirstChar { it.uppercase() },
+                    currentScreen = AppScreen.HOME,
+                    loginError = null,
+                    isLoggingIn = false
+                )
+            } catch (e: HttpException) {
+                Log.e("AUTH_ERROR", e.message ?: "Login failed", e)
+                val message = when (e.code()) {
+                    400 -> "Email and password are required."
+                    401 -> "Invalid email or password."
+                    403 -> "Unable to sign in — please try again."
+                    else -> "Login failed (${e.code()}). Please try again."
+                }
+                _state.value = _state.value.copy(loginError = message, isLoggingIn = false)
+            } catch (e: IOException) {
+                Log.e("AUTH_ERROR", e.message ?: "Network error during login", e)
+                _state.value = _state.value.copy(
+                    loginError = "Could not reach the server. Please try again.",
+                    isLoggingIn = false
+                )
+            }
         }
     }
 
     fun logout() {
-        _state.value = AppState()
+        viewModelScope.launch {
+            try {
+                authRepository.logout()
+            } catch (e: Exception) {
+                // Best-effort revoke — session is cleared locally regardless (see AuthRepository.logout).
+                Log.e("AUTH_ERROR", e.message ?: "Logout call failed", e)
+            }
+            _state.value = AppState()
+        }
     }
 
     fun navigate(screen: AppScreen) {

@@ -58,8 +58,9 @@ fun HeavyRentalApp() {
 
     if (!state.isLoggedIn) {
         LoginScreen(
-            onLogin    = { email, password -> vm.login(email, password) },
-            loginError = state.loginError
+            onLogin     = { email, password -> vm.login(email, password) },
+            loginError  = state.loginError,
+            isLoggingIn = state.isLoggingIn
         )
         return
     }

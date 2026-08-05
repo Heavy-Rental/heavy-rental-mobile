@@ -5,10 +5,6 @@ import java.time.LocalDate
 
 object MockDataRepository {
 
-    const val ADMIN_EMAIL    = "admin@heavyrental.com"
-    const val ADMIN_PASSWORD = "admin123"
-    const val ADMIN_NAME     = "Admin"
-
     private val today: LocalDate = LocalDate.now()
 
     val bookingList: List<Booking> = listOf(

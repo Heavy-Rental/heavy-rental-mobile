@@ -20,6 +20,9 @@ const mockoonDir = path.join(root, "mocks", "mockoon");
 
 const UUID = {
   env: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  getBearerToken: "11111111-1111-4111-8111-111111111108",
+  login: "11111111-1111-4111-8111-111111111109",
+  logout: "11111111-1111-4111-8111-111111111110",
   getBookings: "11111111-1111-4111-8111-111111111101",
   getBooking: "11111111-1111-4111-8111-111111111102",
   putBooking: "11111111-1111-4111-8111-111111111103",
@@ -71,6 +74,28 @@ function jsonResponse({ uuid, label, statusCode = 200, body, filePath, isDefault
   };
 }
 
+function textResponse({ uuid, label, statusCode = 200, filePath, isDefault = true }) {
+  return {
+    uuid,
+    body: "",
+    latency: 0,
+    statusCode,
+    label: label ?? "",
+    headers: [{ key: "Content-Type", value: "text/plain" }],
+    bodyType: "FILE",
+    filePath,
+    databucketID: "",
+    sendFileAsBody: false,
+    rules: [],
+    rulesOperator: "OR",
+    disableTemplating: false,
+    fallbackTo404: false,
+    default: isDefault,
+    crudKey: "id",
+    callbacks: [],
+  };
+}
+
 function httpRoute({ uuid, method, endpoint, documentation, responses }) {
   return {
     uuid,
@@ -87,6 +112,48 @@ function httpRoute({ uuid, method, endpoint, documentation, responses }) {
 
 function buildMockoonEnvironment(paths) {
   const routes = [
+    httpRoute({
+      uuid: UUID.getBearerToken,
+      method: "get",
+      endpoint: "api/auth/getBearerToken",
+      documentation:
+        "MOCK ONLY: canned interim JWT (plain text). Does not sign real tokens — see specification/api/heavyrental-openapi.yaml.",
+      responses: [
+        textResponse({
+          uuid: UUID.resp(8),
+          label: "200 — canned interim token (mock only, not a real JWT)",
+          filePath: paths.interimToken,
+        }),
+      ],
+    }),
+    httpRoute({
+      uuid: UUID.login,
+      method: "post",
+      endpoint: "api/auth/login",
+      documentation:
+        "MOCK ONLY: returns the same canned access token for any email/password and any (or missing) interim Bearer. Does not verify credentials — run the real heavy-rental-spring-rest-api backend to test actual login behaviour.",
+      responses: [
+        jsonResponse({
+          uuid: UUID.resp(9),
+          label: "200 — canned access token (any credentials succeed against this mock)",
+          filePath: paths.loginResponse,
+        }),
+      ],
+    }),
+    httpRoute({
+      uuid: UUID.logout,
+      method: "post",
+      endpoint: "api/auth/logout",
+      documentation:
+        "MOCK ONLY: always returns 200 regardless of the Bearer token. Does not validate or revoke it.",
+      responses: [
+        jsonResponse({
+          uuid: UUID.resp(10),
+          label: "200 — canned logout confirmation (mock only)",
+          filePath: paths.logoutResponse,
+        }),
+      ],
+    }),
     httpRoute({
       uuid: UUID.getBookings,
       method: "get",
@@ -233,6 +300,8 @@ function injectExamplesIntoOpenApi(doc, fixtures) {
     };
   };
 
+  ensureExample(doc.paths?.["/api/auth/login"]?.post, "200", fixtures.loginResponse);
+  ensureExample(doc.paths?.["/api/auth/logout"]?.post, "200", fixtures.logoutResponse);
   ensureExample(doc.paths?.["/api/bookings"]?.get, "200", fixtures.bookings);
   ensureExample(doc.paths?.["/api/bookings/{bookingId}"]?.get, "200", fixtures.bookingItem);
   ensureExample(doc.paths?.["/api/bookings/{bookingId}"]?.put, "200", fixtures.bookingItem);
@@ -253,6 +322,8 @@ function main() {
   const bookings = readJson("bookings.json");
   const deliveries = readJson("deliveries.json");
   const returns = readJson("returns.json");
+  const loginResponse = readJson("login-response.json");
+  const logoutResponse = readJson("logout-response.json");
 
   const bookingItem = bookings[0];
   const deliveryItem = {
@@ -274,6 +345,9 @@ function main() {
 
   // Mockoon FILE paths are relative to the environment file directory
   const mockoonPaths = {
+    interimToken: relFromMockoon(path.join(examplesDir, "interim-token.txt")),
+    loginResponse: relFromMockoon(path.join(examplesDir, "login-response.json")),
+    logoutResponse: relFromMockoon(path.join(examplesDir, "logout-response.json")),
     bookings: relFromMockoon(path.join(examplesDir, "bookings.json")),
     deliveries: relFromMockoon(path.join(examplesDir, "deliveries.json")),
     returns: relFromMockoon(path.join(examplesDir, "returns.json")),
@@ -295,6 +369,8 @@ function main() {
     bookingItem,
     deliveryItem,
     returnItem,
+    loginResponse,
+    logoutResponse,
   });
 
   const bundledPath = path.join(generatedDir, "openapi.bundled.yaml");

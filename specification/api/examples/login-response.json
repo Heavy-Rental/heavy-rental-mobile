@@ -1,0 +1,6 @@
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiJ9.mock-access-token-for-local-mock-testing-only.mock-signature",
+  "tokenType": "Bearer",
+  "expiresIn": 3600,
+  "username": "admin@localhost"
+}
