@@ -30,7 +30,8 @@ import com.heavyrental.ui.theme.*
 @Composable
 fun LoginScreen(
     onLogin: (email: String, password: String) -> Unit,
-    loginError: String?
+    loginError: String?,
+    isLoggingIn: Boolean = false
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -153,11 +154,20 @@ fun LoginScreen(
 
             Button(
                 onClick = { onLogin(email, password) },
+                enabled = !isLoggingIn,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Primary)
             ) {
-                Text("Sign In", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.Black)
+                if (isLoggingIn) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = Color.Black,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text("Sign In", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.Black)
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -167,10 +177,16 @@ fun LoginScreen(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                     horizontalAlignment = Alignment.Start
                 ) {
-                    Text("Demo credentials", color = MutedForeground, style = MaterialTheme.typography.labelSmall)
+                    Text("Default dev seed (API)", color = MutedForeground, style = MaterialTheme.typography.labelSmall)
                     Spacer(modifier = Modifier.height(2.dp))
-                    Text("admin@heavyrental.com", color = Foreground, style = MaterialTheme.typography.bodySmall)
-                    Text("admin123", color = Foreground, style = MaterialTheme.typography.bodySmall)
+                    Text("admin@localhost", color = Foreground, style = MaterialTheme.typography.bodySmall)
+                    Text("admin1234", color = Foreground, style = MaterialTheme.typography.bodySmall)
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        "Only valid on a freshly seeded API — see SPEC-auth-login-logout.md §7.4",
+                        color = MutedForeground,
+                        style = MaterialTheme.typography.labelSmall
+                    )
                 }
             }
         }

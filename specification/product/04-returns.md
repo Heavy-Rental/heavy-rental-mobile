@@ -75,10 +75,9 @@ Feature: Returns
 
   Scenario: Operator completes a mobilised return
     Given a return item with bookingId "RET-002" and status MOBILISED
-    And endDate is today
     When the operator marks the return as completed
-    Then the booking status becomes COMPLETED
-    And the deliveries and returns derived lists are refreshed
+    Then the return item status becomes COMPLETED
+    And the in-memory returns list is updated for that bookingId
     And the app attempts PATCH /api/returns/{bookingId}/status
     And the request body includes bookingStatus "COMPLETED"
 
@@ -116,11 +115,30 @@ Offline behaviour: [product/05-offline-fallback.md](05-offline-fallback.md).
 
 | Step | Behaviour |
 |------|-----------|
-| Load | Prefer `GET /api/bookings`; map to domain `Booking` |
-| Derive list | Client applies return filter (`endDate` + status) via `toReturnItems()` |
+| Load list | **`GET /api/returns`** → map each `ReturnItem` DTO to domain `ReturnItem` |
+| Display | Use the API payload as the Return List (server/mock already applies “today’s returns” membership) |
+| UI chips | Client-side only: All / Mobilised / Completed on the loaded list |
+| Seed / offline | Until the list API succeeds (or if it fails), seed from `MockDataRepository` via `toReturnItems()` — see [05-offline-fallback.md](05-offline-fallback.md) |
+| Bookings | `GET /api/bookings` may still load for shared booking state; **must not** replace the return list by re-filtering bookings with device “today” |
 | Update | `PATCH /api/returns/{bookingId}/status` with `{ "bookingStatus": "COMPLETED" }` |
 
-Note: `GET /api/returns` exists in the API contract for backend/mocks but the **v1 client derives the list from bookings**.
+```gherkin
+  Scenario: Return list loads from the returns endpoint
+    Given the auth session is ready
+    When the app loads list data
+    Then the client calls GET /api/returns
+    And the Return List shows the returned items
+    And the client does not drop rows solely because endDate differs from device LocalDate.now()
+
+  Scenario: Returns API failure keeps seed
+    Given seed return items are shown
+    When GET /api/returns fails
+    Then the Return List still shows seed data
+    And a network error is surfaced
+```
+
+Membership rules: [domain/list-filters.md](../domain/list-filters.md).  
+Contract examples: [api/examples/returns.json](../api/examples/returns.json).
 
 ---
 
@@ -138,6 +156,8 @@ Note: `GET /api/returns` exists in the API contract for backend/mocks but the **
 | Concern | Location |
 |---------|----------|
 | UI + filters + maps | `ui/screens/ReturnListScreen.kt` |
-| Transition | `viewmodel/AppViewModel.kt` — `updateReturnStatus` |
-| API | `data/repository/BookingRepository.kt` → `network/HeavyRentalApiService` |
-| Derive | `data/models/Bookings.kt` — `List<Booking>.toReturnItems()` |
+| Load + transition | `viewmodel/AppViewModel.kt` — `loadData` / `updateReturnStatus` |
+| API | `data/repository/BookingRepository.kt` — `getTodaysReturns`, `updateReturnStatus` |
+| Paths | `network/dto/HeavyRentalApiService.kt` — `GET api/returns` |
+| DTO map | `network/dto/Mappers.kt` — `ReturnItemDto.toReturnItem()` |
+| Seed derive only | `data/models/Bookings.kt` — `List<Booking>.toReturnItems()` |

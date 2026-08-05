@@ -18,6 +18,7 @@ Implementation code under `app/` must follow these specs. When behaviour changes
 | **API** | [`api/`](api/) | OpenAPI contract + example payloads |
 | **Decisions** | [`decisions/`](decisions/) | Architecture Decision Records (ADRs) |
 | **Environment** | [`project-environment.md`](project-environment.md) | Spec inputs vs generated Mockoon/Prism env under `mocks/` |
+| **Testing** | [`testing-guide.md`](testing-guide.md) | Manual QA: Mockoon + Postman + Android emulator |
 
 ---
 
@@ -46,9 +47,11 @@ When layers conflict, resolve in this order: **product intent → domain rules �
 
 **Runtime (dev):**
 
-- Android emulator base URL: `http://10.0.2.2:8081/` (host machine port `8081`) — `RetrofitInstance.BASE_URL`
-- In-app seed data: `MockDataRepository.bookingList` (used until API succeeds, and as fallback on failure)
-- Bookings load on shell start: `AppViewModel.loadBookings()` via `LaunchedEffect` in `HeavyRentalApp`
+- Default HTTP mock: Mockoon or Prism on host port `8081` (OpenAPI `servers`)
+- Android emulator base URL: `http://10.0.2.2:8081/` — `RetrofitInstance.BASE_URL`
+- Auth: interim → access JWT via `/api/auth/*` ([product/01-login.md](product/01-login.md))
+- In-app booking seed: `MockDataRepository.bookingList` (used until API succeeds, and as fallback on list/status failure)
+- List load on shell start: `AppViewModel.loadData()` → `GET /api/deliveries`, `GET /api/returns` (and bookings) via `LaunchedEffect` in `HeavyRentalApp`
 
 ---
 
@@ -78,9 +81,9 @@ For every feature or behaviour change:
 
 | Goal | Tool | Driven by |
 |------|------|-----------|
-| Run full app against fake HTTP | Mockoon or Prism on port `8081` | OpenAPI + `api/examples/` |
+| Run full app against fake HTTP | Mockoon or Prism on port `8081` | OpenAPI + `api/examples/` (includes canned auth) |
 | Automated client tests | OkHttp MockWebServer | Same JSON examples / schemas |
-| UI without server | `MockDataRepository` | Domain examples (keep aligned with fixtures) |
+| Booking lists without server | `MockDataRepository` | Domain examples (seed/fallback only — **not** auth) |
 
 ### Quick start (OpenAPI → mock server)
 
@@ -92,6 +95,8 @@ npm run mock:verify     # optional smoke test
 
 Full instructions: [`mocks/README.md`](../mocks/README.md).
 
+**Manual QA (Mockoon + Postman + Android):** [`testing-guide.md`](testing-guide.md).
+
 See [decisions/002-mock-strategy.md](decisions/002-mock-strategy.md).
 
 ---
@@ -102,8 +107,8 @@ Documented honestly so specs do not over-claim:
 
 | Topic | Current behaviour | Spec stance |
 |-------|-------------------|-------------|
-| Auth | Client-only hardcoded admin | v1 local auth; API login is future |
-| List data | ViewModel loads `GET /api/bookings`, then derives deliveries/returns locally | Domain filters are client-side; dedicated list endpoints exist in API for future/backend use |
+| Auth | Interim → access JWT via OpenAPI Auth routes; Mockoon returns canned tokens (no password/JWT verification); tokens in memory only | API auth is in scope; real credential checks need Spring (or contract tests); secure storage is future |
+| List data | ViewModel loads `GET /api/deliveries` and `GET /api/returns`; seed uses client domain filters | Server/mock owns today membership for list GETs; client seed-only derive when offline |
 | Status updates | Optimistic local update even if PATCH fails | Required product behaviour (see offline fallback) |
 | Persistence | No Room / offline queue | In-memory state only for v1 |
 
@@ -116,6 +121,7 @@ specification/
   README.md
   00-project-overview.md
   project-environment.md
+  testing-guide.md
   product/
     01-login.md
     02-home-dashboard.md
@@ -133,6 +139,9 @@ specification/
       deliveries.json
       returns.json
       status-update-request.json
+      interim-token.txt
+      login-response.json
+      logout-response.json
   decisions/
     001-openapi-as-api-source.md
     002-mock-strategy.md

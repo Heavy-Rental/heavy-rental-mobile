@@ -9,6 +9,114 @@
   "folders": [],
   "routes": [
     {
+      "uuid": "11111111-1111-4111-8111-111111111108",
+      "type": "http",
+      "documentation": "MOCK ONLY: canned interim JWT (plain text). Does not sign real tokens — see specification/api/heavyrental-openapi.yaml.",
+      "method": "get",
+      "endpoint": "api/auth/getBearerToken",
+      "responses": [
+        {
+          "uuid": "22222222-2222-4222-8222-222222222208",
+          "body": "",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "200 — canned interim token (mock only, not a real JWT)",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "text/plain"
+            }
+          ],
+          "bodyType": "FILE",
+          "filePath": "../../specification/api/examples/interim-token.txt",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "11111111-1111-4111-8111-111111111109",
+      "type": "http",
+      "documentation": "MOCK ONLY: returns the same canned access token for any email/password and any (or missing) interim Bearer. Does not verify credentials — run the real heavy-rental-spring-rest-api backend to test actual login behaviour.",
+      "method": "post",
+      "endpoint": "api/auth/login",
+      "responses": [
+        {
+          "uuid": "22222222-2222-4222-8222-222222222209",
+          "body": "",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "200 — canned access token (any credentials succeed against this mock)",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "FILE",
+          "filePath": "../../specification/api/examples/login-response.json",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "11111111-1111-4111-8111-111111111110",
+      "type": "http",
+      "documentation": "MOCK ONLY: always returns 200 regardless of the Bearer token. Does not validate or revoke it.",
+      "method": "post",
+      "endpoint": "api/auth/logout",
+      "responses": [
+        {
+          "uuid": "22222222-2222-4222-8222-222222222210",
+          "body": "",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "200 — canned logout confirmation (mock only)",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "FILE",
+          "filePath": "../../specification/api/examples/logout-response.json",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
       "uuid": "11111111-1111-4111-8111-111111111101",
       "type": "http",
       "documentation": "List all bookings (primary v1 client load)",
@@ -262,6 +370,18 @@
     }
   ],
   "rootChildren": [
+    {
+      "type": "route",
+      "uuid": "11111111-1111-4111-8111-111111111108"
+    },
+    {
+      "type": "route",
+      "uuid": "11111111-1111-4111-8111-111111111109"
+    },
+    {
+      "type": "route",
+      "uuid": "11111111-1111-4111-8111-111111111110"
+    },
     {
       "type": "route",
       "uuid": "11111111-1111-4111-8111-111111111101"

@@ -53,13 +53,14 @@ fun HeavyRentalApp() {
     val networkError by vm.networkError.collectAsState()
 
     LaunchedEffect(Unit) {
-        vm.loadBookings()
+        vm.loadData()
     }
 
     if (!state.isLoggedIn) {
         LoginScreen(
-            onLogin    = { email, password -> vm.login(email, password) },
-            loginError = state.loginError
+            onLogin     = { email, password -> vm.login(email, password) },
+            loginError  = state.loginError,
+            isLoggingIn = state.isLoggingIn
         )
         return
     }

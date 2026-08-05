@@ -12,28 +12,33 @@ import kotlinx.coroutines.flow.asStateFlow
 import com.heavyrental.data.models.Booking
 import com.heavyrental.data.models.toDeliveryItems
 import com.heavyrental.data.models.toReturnItems
+import com.heavyrental.data.repository.AuthRepository
 import com.heavyrental.data.repository.BookingRepository
 import androidx.lifecycle.viewModelScope
 import android.util.Log
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
+import java.io.IOException
 
 
 data class AppState(
     val isLoggedIn: Boolean = false,
     val adminName: String = "",
     val currentScreen: AppScreen = AppScreen.LOGIN,
-    val loginError: String? = null
+    val loginError: String? = null,
+    val isLoggingIn: Boolean = false
 )
 
 class AppViewModel : ViewModel() {
 
+    private val authRepository = AuthRepository()
     private val bookingRepository = BookingRepository()
     private val _state = MutableStateFlow(AppState())
     val state: StateFlow<AppState> = _state.asStateFlow()
 
-    // Seed with mock data so the UI always shows something immediately.
-    // loadBookings() below will overwrite this with real API data once the network call succeeds
-    // if it fails, the mock data stays visible instead of leaving the screen blank
+    // Seed so the UI always shows something immediately.
+    // loadData() replaces lists from GET /api/deliveries and GET /api/returns when they succeed;
+    // on failure seed remains (see product/05-offline-fallback.md).
     private val _bookings = MutableStateFlow(MockDataRepository.bookingList)
     val bookings: StateFlow<List<Booking>> = _bookings.asStateFlow()
 
@@ -49,24 +54,53 @@ class AppViewModel : ViewModel() {
     val networkError: StateFlow<String?> = _networkError.asStateFlow()
 
     // ────────── Auth ────────────
+    // Interim → access Bearer flow (getBearerToken → login → logout).
+    // See specification/product/01-login.md and AuthRepository.
 
     fun login(email: String, password: String) {
-        if (email.trim().lowercase() == MockDataRepository.ADMIN_EMAIL &&
-            password == MockDataRepository.ADMIN_PASSWORD
-        ) {
-            _state.value = _state.value.copy(
-                isLoggedIn = true,
-                adminName = MockDataRepository.ADMIN_NAME,
-                currentScreen = AppScreen.HOME,
-                loginError = null
-            )
-        } else {
-            _state.value = _state.value.copy(loginError = "Invalid email or password.")
+        if (_state.value.isLoggingIn) return
+
+        _state.value = _state.value.copy(isLoggingIn = true, loginError = null)
+
+        viewModelScope.launch {
+            try {
+                val response = authRepository.login(email, password)
+                _state.value = _state.value.copy(
+                    isLoggedIn = true,
+                    adminName = response.username.substringBefore("@").replaceFirstChar { it.uppercase() },
+                    currentScreen = AppScreen.HOME,
+                    loginError = null,
+                    isLoggingIn = false
+                )
+            } catch (e: HttpException) {
+                Log.e("AUTH_ERROR", e.message ?: "Login failed", e)
+                val message = when (e.code()) {
+                    400 -> "Email and password are required."
+                    401 -> "Invalid email or password."
+                    403 -> "Unable to sign in — please try again."
+                    else -> "Login failed (${e.code()}). Please try again."
+                }
+                _state.value = _state.value.copy(loginError = message, isLoggingIn = false)
+            } catch (e: IOException) {
+                Log.e("AUTH_ERROR", e.message ?: "Network error during login", e)
+                _state.value = _state.value.copy(
+                    loginError = "Could not reach the server. Please try again.",
+                    isLoggingIn = false
+                )
+            }
         }
     }
 
     fun logout() {
-        _state.value = AppState()
+        viewModelScope.launch {
+            try {
+                authRepository.logout()
+            } catch (e: Exception) {
+                // Best-effort revoke — session is cleared locally regardless (see AuthRepository.logout).
+                Log.e("AUTH_ERROR", e.message ?: "Logout call failed", e)
+            }
+            _state.value = AppState()
+        }
     }
 
     fun navigate(screen: AppScreen) {
@@ -107,8 +141,11 @@ class AppViewModel : ViewModel() {
     ) {
         if (newStatus != expectedNew) return
 
-        val current = _bookings.value.find { it.bookingId == id }
-        if (current == null || current.bookingStatus != expectedCurrent) return
+        // Prefer list state (from GET /api/deliveries|returns); fall back to bookings.
+        val currentStatus = _deliveries.value.find { it.bookingId == id }?.bookingStatus
+            ?: _returns.value.find { it.bookingId == id }?.bookingStatus
+            ?: _bookings.value.find { it.bookingId == id }?.bookingStatus
+        if (currentStatus == null || currentStatus != expectedCurrent) return
 
         viewModelScope.launch {
             try {
@@ -119,8 +156,9 @@ class AppViewModel : ViewModel() {
                 _networkError.value = "Could not sync status update to API — updated locally only. (${e.message})"
             }
 
-            // Applied locally either way so the app stays usable if the API is unreachable
-            // same fallback pattern as loadBookings()
+            // Applied locally either way so the app stays usable if the API is unreachable.
+            // Update list rows in place — do NOT re-derive with toDeliveryItems()/toReturnItems()
+            // (that re-applies device "today" and empties Mockoon fixtures with fixed dates).
             _bookings.value = _bookings.value.map { booking ->
                 if (booking.bookingId == id && booking.bookingStatus == expectedCurrent) {
                     booking.copy(bookingStatus = newStatus)
@@ -129,26 +167,63 @@ class AppViewModel : ViewModel() {
                 }
             }
 
-            _deliveries.value = _bookings.value.toDeliveryItems()
-            _returns.value = _bookings.value.toReturnItems()
-        }
-    }
+            _deliveries.value = _deliveries.value.map { item ->
+                if (item.bookingId == id && item.bookingStatus == expectedCurrent) {
+                    item.copy(bookingStatus = newStatus)
+                } else {
+                    item
+                }
+            }
 
-    fun loadBookings() {
-        viewModelScope.launch {
-            try {
-                val result = bookingRepository.getBookings()
-
-                _bookings.value = result
-                _deliveries.value = result.toDeliveryItems()
-                _returns.value = result.toReturnItems()
-                _networkError.value = null
-
-            } catch (e: Exception) {
-                Log.e("API_ERROR", e.message ?: "Unknown error", e)
-                _networkError.value = "Could not reach API — showing mock data. (${e.message})"
+            _returns.value = _returns.value.map { item ->
+                if (item.bookingId == id && item.bookingStatus == expectedCurrent) {
+                    item.copy(bookingStatus = newStatus)
+                } else {
+                    item
+                }
             }
         }
     }
+
+    /**
+     * Loads list screens from dedicated endpoints (GET /api/deliveries, GET /api/returns)
+     * and optionally GET /api/bookings. Seed data remains if a call fails.
+     * See specification/product/03-deliveries.md and 05-offline-fallback.md.
+     */
+    fun loadData() {
+        viewModelScope.launch {
+            val errors = mutableListOf<String>()
+
+            try {
+                _bookings.value = bookingRepository.getBookings()
+            } catch (e: Exception) {
+                Log.e("API_ERROR", e.message ?: "Bookings load failed", e)
+                errors += "bookings: ${e.message}"
+            }
+
+            try {
+                _deliveries.value = bookingRepository.getTodaysDeliveries()
+            } catch (e: Exception) {
+                Log.e("API_ERROR", e.message ?: "Deliveries load failed", e)
+                errors += "deliveries: ${e.message}"
+            }
+
+            try {
+                _returns.value = bookingRepository.getTodaysReturns()
+            } catch (e: Exception) {
+                Log.e("API_ERROR", e.message ?: "Returns load failed", e)
+                errors += "returns: ${e.message}"
+            }
+
+            _networkError.value = if (errors.isEmpty()) {
+                null
+            } else {
+                "Could not reach API — showing mock data. (${errors.joinToString("; ")})"
+            }
+        }
+    }
+
+    /** @deprecated Use [loadData]; kept name for any external call sites. */
+    fun loadBookings() = loadData()
 
 }

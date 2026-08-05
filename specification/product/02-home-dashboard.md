@@ -79,17 +79,18 @@ Shell navigation is required. Home does not own its own tab routing beyond logou
 ## Data loading
 
 ```gherkin
-  Scenario: Bookings load when the app shell starts
+  Scenario: List data loads when the app shell starts
     Given the user opens the app
     When the main shell is composed
-    Then loadBookings is requested
-    And if the API succeeds, dashboard counts use API data
-    And if the API fails, dashboard counts use mock seed data and an error banner may show
+    Then loadData is requested
+    And the client calls GET /api/deliveries and GET /api/returns (and optionally GET /api/bookings)
+    And if the list APIs succeed, dashboard counts use those payloads
+    And if a list API fails, the corresponding counts use mock seed data and an error banner may show
 ```
 
-`loadBookings()` runs in `LaunchedEffect(Unit)` inside `HeavyRentalApp` (after login gate still seeds/loads when shell composes; seed is available immediately in ViewModel init).
+`loadData()` runs in `LaunchedEffect(Unit)` inside `HeavyRentalApp` (seed lists are available immediately in ViewModel init).
 
-See [05-offline-fallback.md](05-offline-fallback.md).
+See [05-offline-fallback.md](05-offline-fallback.md), [03-deliveries.md](03-deliveries.md), [04-returns.md](04-returns.md).
 
 ---
 
@@ -109,4 +110,4 @@ See [05-offline-fallback.md](05-offline-fallback.md).
 |---------|----------|
 | UI | `ui/screens/HomeScreen.kt` |
 | Counts passed from shell | `MainActivity.kt` — `HeavyRentalApp` |
-| State | `viewmodel/AppViewModel.kt` — bookings → `toDeliveryItems()` / `toReturnItems()` |
+| State | `viewmodel/AppViewModel.kt` — `deliveries` / `returns` from `GET /api/deliveries` and `GET /api/returns` (seed via `toDeliveryItems()` / `toReturnItems()` until then) |

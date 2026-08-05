@@ -45,6 +45,7 @@ Rules:
 3. MockWebServer is **not** the primary manual mock server (prefer Mockoon/Prism for that).
 4. Optimistic UI updates on PATCH failure remain product behaviour ([05-offline-fallback.md](../product/05-offline-fallback.md)).
 5. Generated files under `mocks/.generated/` are not hand-edited; change OpenAPI/examples and re-run prepare.
+6. **Auth on Mockoon/Prism is static:** getBearerToken / login / logout return canned fixtures. They do **not** sign real JWTs or verify passwords. Use a real Spring backend (or MockWebServer scenarios) for credential-failure and token-lifecycle testing. Product caveats: [01-login.md](../product/01-login.md).
 
 ## Consequences
 
@@ -58,6 +59,7 @@ Rules:
 
 - Three places can drift — discipline via specs + PR checklist
 - Fixture dates in `examples/` are fixed; in-app seed uses `LocalDate.now()`
+- Mock auth cannot replace a real identity server for negative login tests
 
 ## Alternatives considered
 

@@ -34,6 +34,12 @@ Regenerate assets without starting a server:
 npm run mock:prepare
 ```
 
+## Full manual QA guide
+
+Step-by-step Mockoon + **Postman** + **Android** walkthrough (checklists, auth sequence, troubleshooting):
+
+→ [`specification/testing-guide.md`](../specification/testing-guide.md)
+
 ## Android app
 
 `RetrofitInstance` uses:
