@@ -109,7 +109,7 @@ class AppViewModel : ViewModel() {
 
     // ───── Status updates ──────
 
-    fun updateDeliveryStatus(id: String, newStatus: BookingStatus) {
+    fun updateDeliveryStatus(id: Long, newStatus: BookingStatus) {
         updateBookingStatus(
             id,
             BookingStatus.CONFIRMED,
@@ -121,7 +121,7 @@ class AppViewModel : ViewModel() {
     }
 
     // Mobilised → Completed only. Silently ignored for any other transition.
-    fun updateReturnStatus(id: String, newStatus: BookingStatus) {
+    fun updateReturnStatus(id: Long, newStatus: BookingStatus) {
         updateBookingStatus(
             id,
             BookingStatus.MOBILISED,
@@ -133,7 +133,7 @@ class AppViewModel : ViewModel() {
     }
 
     private fun updateBookingStatus(
-        id: String,
+        id: Long,
         expectedCurrent: BookingStatus,
         expectedNew: BookingStatus,
         newStatus: BookingStatus,

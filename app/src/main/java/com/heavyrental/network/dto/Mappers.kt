@@ -15,20 +15,20 @@ fun BookingDto.toBooking(): Booking = Booking(
     startDate = LocalDate.parse(startDate),
     endDate = LocalDate.parse(endDate),
     bookingStatus = BookingStatus.valueOf(bookingStatus),
-    projectLocation = projectLocation,
+    siteAddress = siteAddress,
     assetName = assetName,
     serialNumber = serialNumber,
-    quantity = quantity
+    deliveryNotes = deliveryNotes
 )
 
 fun DeliveryItemDto.toDeliveryItem(): DeliveryItem = DeliveryItem(
     bookingId = bookingId,
     customerName = customerName,
     startDate = LocalDate.parse(startDate),
-    projectLocation = projectLocation,
+    siteAddress = siteAddress,
     assetName = assetName,
     serialNumber = serialNumber,
-    quantity = quantity,
+    deliveryNotes = deliveryNotes,
     bookingStatus = BookingStatus.valueOf(bookingStatus)
 )
 
@@ -36,10 +36,9 @@ fun ReturnItemDto.toReturnItem(): ReturnItem = ReturnItem(
     bookingId = bookingId,
     customerName = customerName,
     endDate = LocalDate.parse(endDate),
-    projectLocation = projectLocation,
+    siteAddress = siteAddress,
     assetName = assetName,
     serialNumber = serialNumber,
-    quantity = quantity,
+    deliveryNotes = deliveryNotes,
     bookingStatus = BookingStatus.valueOf(bookingStatus)
 )
-

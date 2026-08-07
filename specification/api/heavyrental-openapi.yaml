@@ -316,8 +316,9 @@ components:
       in: path
       required: true
       schema:
-        type: string
-        example: DLV-003
+        type: integer
+        format: int64
+        example: 3
 
   schemas:
     LoginRequest:
@@ -381,7 +382,7 @@ components:
 
     BookingStatus:
       type: string
-      enum: [CONFIRMED, MOBILISED, COMPLETED]
+      enum: [PENDING_DEPOSIT, PENDING_CONFIRMED, CONFIRMED, MOBILISED, COMPLETED, CANCELLED]
       description: Hire lifecycle status (see specification/domain/booking-status-machine.md)
 
     Booking:
@@ -392,14 +393,15 @@ components:
         - startDate
         - endDate
         - bookingStatus
-        - projectLocation
+        - siteAddress
         - assetName
         - serialNumber
-        - quantity
+        - deliveryNotes
       properties:
         bookingId:
-          type: string
-          example: DLV-001
+          type: integer
+          format: int64
+          example: 1
         customerName:
           type: string
           example: Lim Construction Pte Ltd
@@ -414,7 +416,7 @@ components:
           example: "2026-08-10"
         bookingStatus:
           $ref: "#/components/schemas/BookingStatus"
-        projectLocation:
+        siteAddress:
           type: string
           example: 18 Tuas South Ave 14, Singapore 637471
         assetName:
@@ -423,10 +425,9 @@ components:
         serialNumber:
           type: string
           example: CAT 320 GC
-        quantity:
-          type: integer
-          minimum: 1
-          example: 1
+        deliveryNotes:
+          type: string
+          example: ""
 
     DeliveryItem:
       type: object
@@ -434,28 +435,28 @@ components:
         - bookingId
         - customerName
         - startDate
-        - projectLocation
+        - siteAddress
         - assetName
         - serialNumber
-        - quantity
+        - deliveryNotes
         - bookingStatus
       properties:
         bookingId:
-          type: string
+          type: integer
+          format: int64
         customerName:
           type: string
         startDate:
           type: string
           format: date
-        projectLocation:
+        siteAddress:
           type: string
         assetName:
           type: string
         serialNumber:
           type: string
-        quantity:
-          type: integer
-          minimum: 1
+        deliveryNotes:
+          type: string
         bookingStatus:
           $ref: "#/components/schemas/BookingStatus"
 
@@ -465,28 +466,28 @@ components:
         - bookingId
         - customerName
         - endDate
-        - projectLocation
+        - siteAddress
         - assetName
         - serialNumber
-        - quantity
+        - deliveryNotes
         - bookingStatus
       properties:
         bookingId:
-          type: string
+          type: integer
+          format: int64
         customerName:
           type: string
         endDate:
           type: string
           format: date
-        projectLocation:
+        siteAddress:
           type: string
         assetName:
           type: string
         serialNumber:
           type: string
-        quantity:
-          type: integer
-          minimum: 1
+        deliveryNotes:
+          type: string
         bookingStatus:
           $ref: "#/components/schemas/BookingStatus"
 

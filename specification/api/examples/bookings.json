@@ -1,112 +1,112 @@
 [
   {
-    "bookingId": "DLV-001",
+    "bookingId": 1,
     "customerName": "Lim Construction Pte Ltd",
     "startDate": "2026-08-03",
     "endDate": "2026-08-10",
     "bookingStatus": "MOBILISED",
-    "projectLocation": "18 Tuas South Ave 14, Singapore 637471",
+    "siteAddress": "18 Tuas South Ave 14, Singapore 637471",
     "assetName": "CAT 320 Hydraulic Excavator",
     "serialNumber": "CAT 320 GC",
-    "quantity": 1
+    "deliveryNotes": ""
   },
   {
-    "bookingId": "DLV-002",
+    "bookingId": 2,
     "customerName": "Sembcorp Marine Ltd",
     "startDate": "2026-08-03",
     "endDate": "2026-08-10",
     "bookingStatus": "MOBILISED",
-    "projectLocation": "80 Tuas South Blvd, Singapore 637051",
+    "siteAddress": "80 Tuas South Blvd, Singapore 637051",
     "assetName": "Komatsu D65 Bulldozer",
     "serialNumber": "D65EX-18",
-    "quantity": 1
+    "deliveryNotes": ""
   },
   {
-    "bookingId": "DLV-003",
+    "bookingId": 3,
     "customerName": "Jurong Port Pte Ltd",
     "startDate": "2026-08-03",
     "endDate": "2026-08-10",
     "bookingStatus": "CONFIRMED",
-    "projectLocation": "Jurong Port Road, Singapore 619110",
+    "siteAddress": "Jurong Port Road, Singapore 619110",
     "assetName": "JLG 1350SJP Telescopic Boom",
     "serialNumber": "1350SJP",
-    "quantity": 2
+    "deliveryNotes": "Two units on this booking — coordinate offload with site security"
   },
   {
-    "bookingId": "DLV-004",
+    "bookingId": 4,
     "customerName": "Jurong Port Pte Ltd",
     "startDate": "2026-08-03",
     "endDate": "2026-08-10",
     "bookingStatus": "CONFIRMED",
-    "projectLocation": "Jurong Port Road, Singapore 619110",
+    "siteAddress": "Jurong Port Road, Singapore 619110",
     "assetName": "JLG 1350SJP Telescopic Boom",
     "serialNumber": "1350SJP",
-    "quantity": 3
+    "deliveryNotes": ""
   },
   {
-    "bookingId": "DLV-005",
+    "bookingId": 5,
     "customerName": "Sembcorp Marine Ltd",
     "startDate": "2026-08-03",
     "endDate": "2026-08-10",
     "bookingStatus": "MOBILISED",
-    "projectLocation": "80 Tuas South Blvd, Singapore 637051",
+    "siteAddress": "80 Tuas South Blvd, Singapore 637051",
     "assetName": "Komatsu D65 Bulldozer",
     "serialNumber": "D65EX-18",
-    "quantity": 3
+    "deliveryNotes": ""
   },
   {
-    "bookingId": "DLV-006",
+    "bookingId": 6,
     "customerName": "Tiong Seng Contractors",
     "startDate": "2026-08-03",
     "endDate": "2026-08-10",
     "bookingStatus": "CONFIRMED",
-    "projectLocation": "1 Woodlands Industrial Park E1, Singapore 757700",
+    "siteAddress": "1 Woodlands Industrial Park E1, Singapore 757700",
     "assetName": "Volvo EC480E Excavator",
     "serialNumber": "EC480E L",
-    "quantity": 1
+    "deliveryNotes": ""
   },
   {
-    "bookingId": "RET-001",
+    "bookingId": 7,
     "customerName": "Keppel Infrastructure",
     "startDate": "2026-07-27",
     "endDate": "2026-08-03",
     "bookingStatus": "COMPLETED",
-    "projectLocation": "1 Maritime Square, Harbourfront, Singapore 099253",
+    "siteAddress": "1 Maritime Square, Harbourfront, Singapore 099253",
     "assetName": "Liebherr LTM 1100 Mobile Crane",
     "serialNumber": "LTM 1100-5.2",
-    "quantity": 1
+    "deliveryNotes": ""
   },
   {
-    "bookingId": "RET-002",
+    "bookingId": 8,
     "customerName": "Changi Airport Group",
     "startDate": "2026-07-27",
     "endDate": "2026-08-03",
     "bookingStatus": "MOBILISED",
-    "projectLocation": "Airport Logistics Park, 11 Airport Cargo Road, Singapore 819466",
+    "siteAddress": "Airport Logistics Park, 11 Airport Cargo Road, Singapore 819466",
     "assetName": "Toyota 8FBE15 Electric Forklift",
     "serialNumber": "8FBE15",
-    "quantity": 3
+    "deliveryNotes": "Airside access pass required — confirm with site ops before arrival"
   },
   {
-    "bookingId": "RET-003",
+    "bookingId": 9,
     "customerName": "Changi Airport Group",
     "startDate": "2026-07-27",
     "endDate": "2026-08-03",
     "bookingStatus": "MOBILISED",
-    "projectLocation": "Airport Logistics Park, 11 Airport Cargo Road, Singapore 819466",
+    "siteAddress": "Airport Logistics Park, 11 Airport Cargo Road, Singapore 819466",
     "assetName": "Toyota 8FBE15 Electric Forklift",
     "serialNumber": "8FBE15",
-    "quantity": 5
+    "deliveryNotes": ""
   },
   {
-    "bookingId": "RET-004",
+    "bookingId": 10,
     "customerName": "Poh Tiong Choon Logistics",
     "startDate": "2026-07-27",
     "endDate": "2026-08-03",
     "bookingStatus": "MOBILISED",
-    "projectLocation": "5 Pandan Road, Singapore 609254",
+    "siteAddress": "5 Pandan Road, Singapore 609254",
     "assetName": "CAT 320 Hydraulic Excavator",
     "serialNumber": "CAT 320 GC",
-    "quantity": 1
+    "deliveryNotes": ""
   }
 ]

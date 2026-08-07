@@ -1,62 +1,62 @@
 [
   {
-    "bookingId": "DLV-001",
+    "bookingId": 1,
     "customerName": "Lim Construction Pte Ltd",
     "startDate": "2026-08-03",
-    "projectLocation": "18 Tuas South Ave 14, Singapore 637471",
+    "siteAddress": "18 Tuas South Ave 14, Singapore 637471",
     "assetName": "CAT 320 Hydraulic Excavator",
     "serialNumber": "CAT 320 GC",
-    "quantity": 1,
+    "deliveryNotes": "",
     "bookingStatus": "MOBILISED"
   },
   {
-    "bookingId": "DLV-002",
+    "bookingId": 2,
     "customerName": "Sembcorp Marine Ltd",
     "startDate": "2026-08-03",
-    "projectLocation": "80 Tuas South Blvd, Singapore 637051",
+    "siteAddress": "80 Tuas South Blvd, Singapore 637051",
     "assetName": "Komatsu D65 Bulldozer",
     "serialNumber": "D65EX-18",
-    "quantity": 1,
+    "deliveryNotes": "",
     "bookingStatus": "MOBILISED"
   },
   {
-    "bookingId": "DLV-003",
+    "bookingId": 3,
     "customerName": "Jurong Port Pte Ltd",
     "startDate": "2026-08-03",
-    "projectLocation": "Jurong Port Road, Singapore 619110",
+    "siteAddress": "Jurong Port Road, Singapore 619110",
     "assetName": "JLG 1350SJP Telescopic Boom",
     "serialNumber": "1350SJP",
-    "quantity": 2,
+    "deliveryNotes": "Two units on this booking — coordinate offload with site security",
     "bookingStatus": "CONFIRMED"
   },
   {
-    "bookingId": "DLV-004",
+    "bookingId": 4,
     "customerName": "Jurong Port Pte Ltd",
     "startDate": "2026-08-03",
-    "projectLocation": "Jurong Port Road, Singapore 619110",
+    "siteAddress": "Jurong Port Road, Singapore 619110",
     "assetName": "JLG 1350SJP Telescopic Boom",
     "serialNumber": "1350SJP",
-    "quantity": 3,
+    "deliveryNotes": "",
     "bookingStatus": "CONFIRMED"
   },
   {
-    "bookingId": "DLV-005",
+    "bookingId": 5,
     "customerName": "Sembcorp Marine Ltd",
     "startDate": "2026-08-03",
-    "projectLocation": "80 Tuas South Blvd, Singapore 637051",
+    "siteAddress": "80 Tuas South Blvd, Singapore 637051",
     "assetName": "Komatsu D65 Bulldozer",
     "serialNumber": "D65EX-18",
-    "quantity": 3,
+    "deliveryNotes": "",
     "bookingStatus": "MOBILISED"
   },
   {
-    "bookingId": "DLV-006",
+    "bookingId": 6,
     "customerName": "Tiong Seng Contractors",
     "startDate": "2026-08-03",
-    "projectLocation": "1 Woodlands Industrial Park E1, Singapore 757700",
+    "siteAddress": "1 Woodlands Industrial Park E1, Singapore 757700",
     "assetName": "Volvo EC480E Excavator",
     "serialNumber": "EC480E L",
-    "quantity": 1,
+    "deliveryNotes": "",
     "bookingStatus": "CONFIRMED"
   }
 ]

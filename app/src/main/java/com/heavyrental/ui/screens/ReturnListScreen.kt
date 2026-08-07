@@ -32,7 +32,7 @@ private enum class ReturnFilter { ALL, MOBILISED, COMPLETED }
 @Composable
 fun ReturnListScreen(
     returns: List<ReturnItem>,
-    onStatusUpdate: (id: String) -> Unit,
+    onStatusUpdate: (id: Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var selectedFilter by remember { mutableStateOf(ReturnFilter.ALL) }
@@ -116,7 +116,7 @@ fun ReturnListScreen(
 @Composable
 private fun ReturnCard(
     item: ReturnItem,
-    onStatusUpdate: (id: String) -> Unit
+    onStatusUpdate: (id: Long) -> Unit
 ) {
     val context = LocalContext.current
     var showConfirmDialog by remember { mutableStateOf(false) }
@@ -181,10 +181,10 @@ private fun ReturnCard(
         Text(item.assetName, style = MaterialTheme.typography.titleLarge, color = Foreground)
         Text(item.serialNumber, style = MaterialTheme.typography.bodySmall, color = MutedForeground)
 
-        if (item.quantity > 1) {
+        if (item.deliveryNotes.isNotBlank()) {
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                "Qty: ${item.quantity}",
+                "Note: ${item.deliveryNotes}",
                 style = MaterialTheme.typography.bodySmall,
                 color = BlueAccent,
                 fontWeight = FontWeight.SemiBold
@@ -197,7 +197,7 @@ private fun ReturnCard(
 
         InfoRow(icon = { Icon(Icons.Default.Person,     null, tint = MutedForeground, modifier = Modifier.size(15.dp)) }, text = item.customerName)
         Spacer(modifier = Modifier.height(4.dp))
-        InfoRow(icon = { Icon(Icons.Default.LocationOn, null, tint = MutedForeground, modifier = Modifier.size(15.dp)) }, text = item.projectLocation)
+        InfoRow(icon = { Icon(Icons.Default.LocationOn, null, tint = MutedForeground, modifier = Modifier.size(15.dp)) }, text = item.siteAddress)
         Spacer(modifier = Modifier.height(4.dp))
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -205,7 +205,7 @@ private fun ReturnCard(
         // Google Maps button
         OutlinedButton(
             onClick = {
-                val uri = Uri.parse("geo:0,0?q=${Uri.encode(item.projectLocation)}")
+                val uri = Uri.parse("geo:0,0?q=${Uri.encode(item.siteAddress)}")
                 val intent = Intent(Intent.ACTION_VIEW, uri).apply {
                     setPackage("com.google.android.apps.maps")
                 }
@@ -216,7 +216,7 @@ private fun ReturnCard(
                     // Fallback: open in browser
                     val fallback = Intent(
                         Intent.ACTION_VIEW,
-                        Uri.parse("https://maps.google.com/?q=${Uri.encode(item.projectLocation)}")
+                        Uri.parse("https://maps.google.com/?q=${Uri.encode(item.siteAddress)}")
                     )
                     context.startActivity(fallback)
                 }

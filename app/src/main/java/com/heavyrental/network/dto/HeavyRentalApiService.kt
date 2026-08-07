@@ -40,10 +40,10 @@ interface HeavyRentalApiService {
     suspend fun getBookings(): List<BookingDto>
 
     @GET("api/bookings/{bookingId}")
-    suspend fun getBooking(@Path("bookingId") bookingId: String): BookingDto
+    suspend fun getBooking(@Path("bookingId") bookingId: Long): BookingDto
 
     @PUT("api/bookings/{bookingId}")
-    suspend fun updateBooking(@Path("bookingId") bookingId: String, @Body booking: BookingDto): BookingDto
+    suspend fun updateBooking(@Path("bookingId") bookingId: Long, @Body booking: BookingDto): BookingDto
 
     // ── Deliveries ───────────────────────────────────────────────────────
     @GET("api/deliveries")
@@ -51,7 +51,7 @@ interface HeavyRentalApiService {
 
     @PATCH("api/deliveries/{bookingId}/status")
     suspend fun updateDeliveryStatus(
-        @Path("bookingId") bookingId: String,
+        @Path("bookingId") bookingId: Long,
         @Body request: StatusUpdateRequest
     ): DeliveryItemDto
 
@@ -61,7 +61,7 @@ interface HeavyRentalApiService {
 
     @PATCH("api/returns/{bookingId}/status")
     suspend fun updateReturnStatus(
-        @Path("bookingId") bookingId: String,
+        @Path("bookingId") bookingId: Long,
         @Body request: StatusUpdateRequest
     ): ReturnItemDto
 }

@@ -10,10 +10,13 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 
 object RetrofitInstance {
 
-    // Android emulator → host Mockoon/Prism (OpenAPI servers + mocks/README).
-    // Host machine: http://localhost:8081/ — start with: npm run mock:mockoon
-    // Real Spring Boot backend (if used instead): http://10.0.2.2:8080/
-    private const val BASE_URL = "http://10.0.2.2:8081/"
+    // A toggle to switch between Mockoon and the real Spring Boot backend
+    // true  = Mockoon (npm run mock:mockoon)
+    // false = real Spring Boot backend
+    private const val USE_MOCK_SERVER = true
+    private const val MOCK_BASE_URL = "http://10.0.2.2:8081/"
+    private const val REAL_BASE_URL = "http://10.0.2.2:8080/"
+    private val BASE_URL = if (USE_MOCK_SERVER) MOCK_BASE_URL else REAL_BASE_URL
 
     private val json = Json {
         ignoreUnknownKeys = true
