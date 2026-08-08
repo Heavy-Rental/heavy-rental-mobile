@@ -31,7 +31,7 @@ import com.heavyrental.ui.theme.*
 fun LoginScreen(
     onLogin: (email: String, password: String) -> Unit,
     loginError: String?,
-    isLoggingIn: Boolean = false
+    isLoggingIn: Boolean = false,
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
