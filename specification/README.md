@@ -1,10 +1,47 @@
 # Heavy Rental — Specification Driven Development
 
-This folder is the **source of truth** for product behaviour, domain rules, and the HTTP API contract.
+This folder holds the **living baseline** for domain rules, OpenAPI, ADRs, environment, and testing.
 
-Implementation code under `app/` must follow these specs. When behaviour changes, update the relevant spec **before or with** the code change.
+**Canonical product feature specs** follow [GitHub Spec Kit](https://github.com/github/spec-kit) and live under [`specs/`](../specs/).  
+**Implementation design contracts** follow [OpenSPDD](https://github.com/gszhangwei/open-spdd) (REASONS Canvas) under [`spdd/`](../spdd/).  
+**Project constitution:** [`.specify/memory/constitution.md`](../.specify/memory/constitution.md).
 
-**Start here for the project itself:** [`00-project-overview.md`](00-project-overview.md) — purpose, actors, scope, stack, architecture.
+Implementation under `app/` must follow these artifacts. When behaviour changes, update the relevant **Spec Kit `spec.md`** (and domain/OpenAPI/REASONS as needed) **before or with** the code change.
+
+**Project overview:** [`00-project-overview.md`](00-project-overview.md).
+
+---
+
+## Standards map
+
+| Standard | Role in this repo | Location |
+|----------|-------------------|----------|
+| **GitHub Spec Kit** | Product intent: user stories, FR-###, SC-###, plan/tasks | [`specs/`](../specs/) |
+| **OpenSPDD** | Executable design contract (REASONS) for non-trivial changes | [`spdd/`](../spdd/) |
+| **OpenAPI** | HTTP paths, schemas, examples | [`api/`](api/) |
+| **Domain** | Status machine, list membership | [`domain/`](domain/) |
+| **ADRs** | Architecture decisions | [`decisions/`](decisions/) |
+| **Constitution** | Non-negotiable principles | [`.specify/memory/constitution.md`](../.specify/memory/constitution.md) |
+
+### Conflict resolution
+
+1. Product intent → `specs/###-feature/spec.md`  
+2. Domain rules → `specification/domain/`  
+3. HTTP contract → OpenAPI  
+4. Implementation design → `spdd/prompt/` REASONS  
+5. When behaviour and design diverge: update REASONS first for behaviour changes; code-first refactor then sync REASONS  
+
+### Workflow (content-first)
+
+| Step | Spec Kit | OpenSPDD |
+|------|----------|----------|
+| 1. Intent | Write/update `specs/…/spec.md` | Optional analysis under `spdd/analysis/` |
+| 2. Design | `plan.md` for non-trivial work | REASONS under `spdd/prompt/` |
+| 3. Tasks | `tasks.md` | Operations section of REASONS |
+| 4. Implement | Code against FR/SC + Operations | — |
+| 5. Drift | Update `spec.md` / `plan.md` | Update prompt then code (behaviour) or code then prompt (refactor) |
+
+CLI tools (`specify`, `openspdd`) are **optional** later; folder layout and writing standards are mandatory now.
 
 ---
 
@@ -12,46 +49,47 @@ Implementation code under `app/` must follow these specs. When behaviour changes
 
 | Layer | Path | Purpose |
 |-------|------|---------|
-| **Project** | [`00-project-overview.md`](00-project-overview.md) | What the app is: goals, scope, actors, tech stack, architecture |
-| **Product** | [`product/`](product/) | Feature acceptance criteria (what the operator can do) |
-| **Domain** | [`domain/`](domain/) | Business rules (status machine, list filters) |
-| **API** | [`api/`](api/) | OpenAPI contract + example payloads |
-| **Decisions** | [`decisions/`](decisions/) | Architecture Decision Records (ADRs) |
-| **Environment** | [`project-environment.md`](project-environment.md) | Spec inputs vs generated Mockoon/Prism env under `mocks/` |
-| **Testing** | [`testing-guide.md`](testing-guide.md) | Manual QA: Mockoon + Postman + Android emulator |
+| **Constitution** | [`.specify/memory/constitution.md`](../.specify/memory/constitution.md) | Immutable project principles |
+| **Feature specs** | [`specs/`](../specs/) | Canonical product WHAT (Spec Kit) |
+| **Product index** | [`product/`](product/) | Short stubs linking to `specs/` |
+| **Domain** | [`domain/`](domain/) | Business rules |
+| **API** | [`api/`](api/) | OpenAPI + examples |
+| **Decisions** | [`decisions/`](decisions/) | ADRs |
+| **Environment** | [`project-environment.md`](project-environment.md) | Spec inputs vs generated mocks |
+| **Testing** | [`testing-guide.md`](testing-guide.md) | Manual QA |
+| **Design prompts** | [`spdd/`](../spdd/) | OpenSPDD REASONS |
 
 ---
 
 ## Sources of truth
 
-1. **Project context:** [`00-project-overview.md`](00-project-overview.md)
-2. **API:** [`api/heavyrental-openapi.yaml`](api/heavyrental-openapi.yaml)
-3. **Domain:** [`domain/booking-status-machine.md`](domain/booking-status-machine.md) and [`domain/list-filters.md`](domain/list-filters.md)
-4. **Product:** files under [`product/`](product/)
-
-When layers conflict, resolve in this order: **product intent → domain rules → API contract → implementation**. Then align all four.
+1. **Constitution:** [`.specify/memory/constitution.md`](../.specify/memory/constitution.md)  
+2. **Product features:** [`specs/*/spec.md`](../specs/)  
+3. **API:** [`api/heavyrental-openapi.yaml`](api/heavyrental-openapi.yaml)  
+4. **Domain:** [`domain/booking-status-machine.md`](domain/booking-status-machine.md), [`domain/list-filters.md`](domain/list-filters.md)  
+5. **Project context:** [`00-project-overview.md`](00-project-overview.md)  
 
 ---
 
 ## Current app map
 
-| Screen | Navigation | Spec | Primary code |
-|--------|------------|------|--------------|
-| Login | `AppScreen.LOGIN` | [product/01-login.md](product/01-login.md) | `ui/screens/LoginScreen.kt` |
-| Home | `AppScreen.HOME` | [product/02-home-dashboard.md](product/02-home-dashboard.md) | `ui/screens/HomeScreen.kt` |
-| Deliveries | `AppScreen.DELIVERIES` | [product/03-deliveries.md](product/03-deliveries.md) | `ui/screens/DeliveryListScreen.kt` |
-| Returns | `AppScreen.RETURNS` | [product/04-returns.md](product/04-returns.md) | `ui/screens/ReturnListScreen.kt` |
-| Offline / API failure | banner in shell | [product/05-offline-fallback.md](product/05-offline-fallback.md) | `MainActivity` / `AppViewModel` |
+| Screen | Navigation | Spec Kit | Primary code |
+|--------|------------|----------|--------------|
+| Login | `AppScreen.LOGIN` | [001-admin-login](../specs/001-admin-login/spec.md) | `ui/screens/LoginScreen.kt` |
+| Home | `AppScreen.HOME` | [002-home-dashboard](../specs/002-home-dashboard/spec.md) | `ui/screens/HomeScreen.kt` |
+| Deliveries | `AppScreen.DELIVERIES` | [003-deliveries](../specs/003-deliveries/spec.md) | `ui/screens/DeliveryListScreen.kt` |
+| Returns | `AppScreen.RETURNS` | [004-returns](../specs/004-returns/spec.md) | `ui/screens/ReturnListScreen.kt` |
+| Offline / API failure | shell banner | [005-offline-fallback](../specs/005-offline-fallback/spec.md) | `MainActivity` / `AppViewModel` |
+| API endpoint config | `app/api.properties` | [084-api-endpoint-toggle](../specs/084-api-endpoint-toggle/spec.md) | `BuildConfig.API_SERVER_TARGET`, `ApiEndpointConfig` |
 
 **Package root:** `com.heavyrental`
 
 **Runtime (dev):**
 
-- Default HTTP mock: Mockoon or Prism on host port `8081` (OpenAPI `servers`)
-- Android emulator base URL: `http://10.0.2.2:8081/` — `RetrofitInstance.BASE_URL`
-- Auth: interim → access JWT via `/api/auth/*` ([product/01-login.md](product/01-login.md))
-- In-app booking seed: `MockDataRepository.bookingList` (used until API succeeds, and as fallback on list/status failure)
-- List load on shell start: `AppViewModel.loadData()` → `GET /api/deliveries`, `GET /api/returns` (and bookings) via `LaunchedEffect` in `HeavyRentalApp`
+- Default HTTP mock: Mockoon or Prism on host port `8081`
+- Android emulator: `http://10.0.2.2:8081/` when `api.server.target=MOCKOON`; set `SPRING_BOOT` in `app/api.properties` (or `local.properties`) for `http://10.0.2.2:8080/` (host `localhost:8080`)
+- Auth: interim → access JWT via `/api/auth/*`
+- List load: `GET /api/deliveries`, `GET /api/returns` (+ bookings); seed fallback on failure
 
 ---
 
@@ -59,21 +97,24 @@ When layers conflict, resolve in this order: **product intent → domain rules �
 
 For every feature or behaviour change:
 
-1. Update the **product** scenario(s)
-2. Update **domain** rules if business logic changes
-3. Update **OpenAPI** + examples if the network contract changes
-4. Refresh mocks (Mockoon / Prism / fixtures) from the API examples
-5. Implement app code
-6. Add or adjust tests (domain unit tests, MockWebServer contract tests)
+1. Update **Spec Kit** `specs/…/spec.md` (stories, FR, SC)  
+2. Update **domain** if business logic changes  
+3. Update **OpenAPI** + examples if the network contract changes  
+4. For non-trivial design: write/update **OpenSPDD REASONS** under `spdd/prompt/`  
+5. Refresh mocks from API examples when needed  
+6. Implement app code  
+7. Add or adjust tests  
 
 ### Checklist (PR)
 
-- [ ] Product scenario updated (if user-visible)
-- [ ] Domain rule updated (if status/filter logic)
-- [ ] OpenAPI + examples updated (if API)
-- [ ] Mock still matches contract (`npm run mock:prepare` / `mock:verify`)
-- [ ] Tests pass
-- [ ] App verified against mock or real API
+- [ ] Spec Kit `spec.md` updated (if user-visible)  
+- [ ] FR/SC testable; no unresolved ambiguities  
+- [ ] Domain rule updated (if status/filter logic)  
+- [ ] OpenAPI + examples updated (if API)  
+- [ ] OpenSPDD REASONS created/updated (if non-trivial design)  
+- [ ] Mock still matches contract (`npm run mock:prepare` / `mock:verify`)  
+- [ ] Constitution gates considered  
+- [ ] Tests pass; app verified against mock or Spring  
 
 ---
 
@@ -81,35 +122,28 @@ For every feature or behaviour change:
 
 | Goal | Tool | Driven by |
 |------|------|-----------|
-| Run full app against fake HTTP | Mockoon or Prism on port `8081` | OpenAPI + `api/examples/` (includes canned auth) |
+| Run full app against fake HTTP | Mockoon or Prism on port `8081` | OpenAPI + `api/examples/` |
 | Automated client tests | OkHttp MockWebServer | Same JSON examples / schemas |
-| Booking lists without server | `MockDataRepository` | Domain examples (seed/fallback only — **not** auth) |
-
-### Quick start (OpenAPI → mock server)
+| Booking lists without server | `MockDataRepository` | Domain examples (seed/fallback — **not** auth) |
 
 ```bash
 npm install
 npm run mock:prism      # or: npm run mock:mockoon
-npm run mock:verify     # optional smoke test
+npm run mock:verify
 ```
 
-Full instructions: [`mocks/README.md`](../mocks/README.md).
-
-**Manual QA (Mockoon + Postman + Android):** [`testing-guide.md`](testing-guide.md).
-
-See [decisions/002-mock-strategy.md](decisions/002-mock-strategy.md).
+Details: [`mocks/README.md`](../mocks/README.md), [decisions/002-mock-strategy.md](decisions/002-mock-strategy.md).  
+Manual QA: [`testing-guide.md`](testing-guide.md).
 
 ---
 
 ## Known gaps (v1)
 
-Documented honestly so specs do not over-claim:
-
 | Topic | Current behaviour | Spec stance |
 |-------|-------------------|-------------|
-| Auth | Interim → access JWT via OpenAPI Auth routes; Mockoon returns canned tokens (no password/JWT verification); tokens in memory only | API auth is in scope; real credential checks need Spring (or contract tests); secure storage is future |
-| List data | ViewModel loads `GET /api/deliveries` and `GET /api/returns`; seed uses client domain filters | Server/mock owns today membership for list GETs; client seed-only derive when offline |
-| Status updates | Optimistic local update even if PATCH fails | Required product behaviour (see offline fallback) |
+| Auth | Interim → access JWT; Mockoon canned; tokens in memory | Real credentials need Spring; secure storage future |
+| List data | Loads deliveries/returns endpoints; seed offline | Server/mock owns membership for list GETs |
+| Status updates | Optimistic local update if PATCH fails | Required product behaviour |
 | Persistence | No Room / offline queue | In-memory state only for v1 |
 
 ---
@@ -117,32 +151,16 @@ Documented honestly so specs do not over-claim:
 ## File index
 
 ```text
+.specify/memory/constitution.md
+specs/                          # Spec Kit feature specs (canonical product)
+spdd/                           # OpenSPDD analysis + REASONS prompts
 specification/
-  README.md
+  README.md                     # this file
   00-project-overview.md
   project-environment.md
   testing-guide.md
-  product/
-    01-login.md
-    02-home-dashboard.md
-    03-deliveries.md
-    04-returns.md
-    05-offline-fallback.md
+  product/                      # index stubs → specs/
   domain/
-    booking-status-machine.md
-    list-filters.md
   api/
-    heavyrental-openapi.yaml
-    README.md
-    examples/
-      bookings.json
-      deliveries.json
-      returns.json
-      status-update-request.json
-      interim-token.txt
-      login-response.json
-      logout-response.json
   decisions/
-    001-openapi-as-api-source.md
-    002-mock-strategy.md
 ```

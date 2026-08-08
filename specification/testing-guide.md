@@ -26,7 +26,8 @@ This guide is **how to run and verify**. Expected product behaviour remains in [
 | Android **emulator** | `http://10.0.2.2:8081/` |
 | Physical device | `http://<your-host-LAN-IP>:8081/` (must match app `BASE_URL`) |
 
-App default: `com.heavyrental.network.RetrofitInstance` → `http://10.0.2.2:8081/` (Mockoon/Prism on host port **8081**).
+App default: `api.server.target=MOCKOON` in `app/api.properties` → `http://10.0.2.2:8081/` (host **8081**).  
+Spring Boot: set `api.server.target=SPRING_BOOT` (or override in root `local.properties`) → `http://10.0.2.2:8080/` (host **`localhost:8080`**), then Sync/Rebuild.
 
 ---
 
@@ -264,15 +265,11 @@ Product transition: `CONFIRMED` → `MOBILISED` — [product/03-deliveries.md](p
 
 ### 5.1 Configuration checklist
 
-1. Mockoon is running on the **host** (`npm run mock:mockoon`).
-2. App base URL is the emulator alias:
-
-```text
-http://10.0.2.2:8081/
-```
-
-(`RetrofitInstance.BASE_URL` — not `localhost`, and not Spring’s `:8080` unless intentional.)
-
+1. Mockoon is running on the **host** (`npm run mock:mockoon`) **or** Spring Boot on host `localhost:8080`.
+2. `app/api.properties` (or root `local.properties` override) matches the server you started:
+   - `api.server.target=MOCKOON` → emulator `http://10.0.2.2:8081/`
+   - `api.server.target=SPRING_BOOT` → emulator `http://10.0.2.2:8080/`
+   Sync Gradle / Rebuild after changing the property. There is **no** in-app toggle.
 3. Cleartext HTTP is allowed for `10.0.2.2` (`AndroidManifest` + `network_security_config`).
 
 ### 5.2 Run the app
@@ -371,7 +368,7 @@ Use this as a short QA pass:
 - [ ] `npm run mock:verify` passes **or** curl shows non-empty `/api/deliveries`  
 - [ ] Postman: auth handshake works; deliveries/returns/bookings return data  
 - [ ] Postman: PATCH delivery/return status returns 200  
-- [ ] Emulator app: `BASE_URL` is `http://10.0.2.2:8081/`  
+- [ ] Emulator app: `api.server.target` in properties matches Mockoon (`:8081`) or Spring (`:8080`) as intended  
 - [ ] App login reaches Home  
 - [ ] Delivery List is **not empty**  
 - [ ] Return List is **not empty**  

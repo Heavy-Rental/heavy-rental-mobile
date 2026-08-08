@@ -13,7 +13,7 @@ This document describes **the project itself**: purpose, users, scope, architect
 
 **Heavy Rental** is an Android operations app for a heavy-equipment hire business. Operators use it to manage **today’s** equipment **deliveries** (mobilisation) and **returns** (completion of hire), with a simple dashboard after login.
 
-The app is built with **Specification Driven Development (SDD)**: product scenarios, domain rules, and an OpenAPI contract in this folder are the source of truth for implementation under `app/`.
+The app is built with **Specification Driven Development (SDD)** aligned with **GitHub Spec Kit** (product `specs/`) and **OpenSPDD** (REASONS under `spdd/`). Domain rules and OpenAPI in this folder remain durable contracts. Implementation under `app/` follows those artifacts.
 
 ---
 
@@ -126,10 +126,10 @@ Product-level exclusions (see also per-feature “Out of scope” sections):
        │                                           │
        └───────────────────┬───────────────────────┘
                            ▼
-              HTTP :8081 (Mockoon / Prism default)
+              HTTP :8081 Mockoon (default) or :8080 Spring Boot
               OpenAPI-defined paths
-              RetrofitInstance.BASE_URL =
-                http://10.0.2.2:8081/ (emulator)
+              ApiServerTarget / BaseUrlInterceptor
+                http://10.0.2.2:8081/ or :8080/ (emulator)
 ```
 
 **Auth (v1):** interim JWT → access JWT handshake; access Bearer attached to business calls. See [product/01-login.md](product/01-login.md).
@@ -175,7 +175,7 @@ Aligned with OpenAPI `LoginRequest` examples and the Login screen seed hint. Ful
 | Host machine / curl | `http://localhost:8081/` |
 | Physical device | `http://<host-lan-ip>:8081/` |
 
-Configured in `RetrofitInstance.BASE_URL` (default Mockoon/Prism). An optional real Spring Boot backend is often on host `:8080` and requires changing the base URL deliberately.
+Default target is Mockoon/Prism (`api.server.target=MOCKOON` in `app/api.properties`). Set `SPRING_BOOT` for host `localhost:8080` (emulator `http://10.0.2.2:8080/`). Applied via `BuildConfig` + `BaseUrlInterceptor` — no in-app UI toggle.
 
 Mock servers and regeneration: [api/README.md](api/README.md), [project-environment.md](project-environment.md), [`mocks/README.md`](../mocks/README.md).
 
@@ -186,7 +186,10 @@ Mock servers and regeneration: [api/README.md](api/README.md), [project-environm
 | If you need… | Read |
 |--------------|------|
 | Project purpose and stack (this file) | [00-project-overview.md](00-project-overview.md) |
-| Feature acceptance criteria | [product/](product/) |
+| Feature specs (Spec Kit, canonical) | [`specs/`](../specs/) |
+| Constitution | [`.specify/memory/constitution.md`](../.specify/memory/constitution.md) |
+| Design contracts (OpenSPDD REASONS) | [`spdd/`](../spdd/) |
+| Product index stubs | [product/](product/) |
 | Status machine / list filters | [domain/](domain/) |
 | HTTP paths and schemas | [api/heavyrental-openapi.yaml](api/heavyrental-openapi.yaml) |
 | Why OpenAPI / mock layers | [decisions/](decisions/) |
@@ -194,7 +197,7 @@ Mock servers and regeneration: [api/README.md](api/README.md), [project-environm
 | SDD workflow and PR checklist | [README.md](README.md) |
 | Mockoon + Postman + Android testing | [testing-guide.md](testing-guide.md) |
 
-**Conflict resolution order:** product intent → domain rules → API contract → implementation (then align all four).
+**Conflict resolution order:** product intent (`specs/`) → domain rules → API contract → implementation (then align all four).
 
 ---
 

@@ -14,9 +14,7 @@ Default client target is **Mockoon or Prism on port 8081** (OpenAPI `servers` an
 | Host machine / Mockoon | `http://localhost:8081/` |
 | Physical device | `http://<host-lan-ip>:8081/` |
 
-Configured in app code: `com.heavyrental.network.RetrofitInstance` (`BASE_URL` defaults to the emulator mock URL above).
-
-Optional real Spring Boot backend is often on host port `8080` and is **not** the documented default — change `BASE_URL` deliberately if you switch.
+Configured via `app/api.properties` (`api.server.target=MOCKOON` | `SPRING_BOOT`), optional root `local.properties` override, injected as `BuildConfig.API_SERVER_TARGET`. Default Mockoon emulator URL above. Spring Boot → host `localhost:8080` / app `http://10.0.2.2:8080/`. No in-app UI toggle.
 
 Product auth behaviour: [product/01-login.md](../product/01-login.md).
 
@@ -49,7 +47,7 @@ Product auth behaviour: [product/01-login.md](../product/01-login.md).
 | Auth handshake | `data/repository/AuthRepository.kt` + `network/TokenSession.kt` |
 | Access Bearer on business calls | `network/AuthInterceptor.kt` |
 | Domain mapping | `BookingRepository` maps DTO → `Booking` / `DeliveryItem` / `ReturnItem` |
-| Base URL | `network/dto/RetrofitInstance.kt` |
+| Base URL / endpoint config | `app/api.properties`, `network/ApiServerTarget.kt`, `ApiEndpointConfig`, `BaseUrlInterceptor` |
 
 ## Examples
 

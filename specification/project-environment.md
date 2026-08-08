@@ -105,15 +105,15 @@ By design, the environment is derived from the specification so:
 
 ## Android client (dev) alignment
 
-The app’s **default** `RetrofitInstance.BASE_URL` is the Android emulator alias for host Mockoon/Prism, matching OpenAPI `servers` entry `http://10.0.2.2:8081`:
+The app’s **default** API target is the Android emulator alias for host Mockoon/Prism, matching OpenAPI `servers` entry `http://10.0.2.2:8081`:
 
-| Client | Base URL |
-|--------|----------|
-| Emulator → host mock (default) | `http://10.0.2.2:8081/` |
-| Host machine / curl | `http://localhost:8081/` or `http://127.0.0.1:8081/` |
-| Physical device | `http://<host-lan-ip>:8081/` (must match app `RetrofitInstance`) |
+| Client | Mockoon / Prism | Spring Boot |
+|--------|-----------------|-------------|
+| Emulator → host | `http://10.0.2.2:8081/` (default) | `http://10.0.2.2:8080/` |
+| Host machine / curl | `http://localhost:8081/` | `http://localhost:8080/` |
+| Physical device | `http://<host-lan-ip>:8081/` | `http://<host-lan-ip>:8080/` |
 
-App config: `com.heavyrental.network.RetrofitInstance` (`BASE_URL`).
+App config: `app/api.properties` key `api.server.target` (`MOCKOON` | `SPRING_BOOT`), optional override in root `local.properties`, injected as `BuildConfig.API_SERVER_TARGET` and applied by `BaseUrlInterceptor`. No in-app UI toggle — edit properties, then Sync/Rebuild.
 
 Auth and booking routes are defined in OpenAPI and served by the generated Mockoon env. Product behaviour: [product/01-login.md](product/01-login.md). Mock auth is canned (no real credential verification) — see [api/README.md](api/README.md) and [decisions/002-mock-strategy.md](decisions/002-mock-strategy.md).
 
