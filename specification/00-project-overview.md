@@ -126,10 +126,11 @@ Product-level exclusions (see also per-feature “Out of scope” sections):
        │                                           │
        └───────────────────┬───────────────────────┘
                            ▼
-              HTTP :8081 (Mockoon / Prism default)
+              HTTP :8080 (Spring Boot — default since HR-78)
+              HTTP :8081 (Mockoon / Prism — USE_MOCK_SERVER = true)
               OpenAPI-defined paths
-              RetrofitInstance.BASE_URL =
-                http://10.0.2.2:8081/ (emulator)
+              RetrofitInstance (USE_MOCK_SERVER) resolves to
+                http://10.0.2.2:8080/ (emulator, default)
 ```
 
 **Auth (v1):** interim JWT → access JWT handshake; access Bearer attached to business calls. See [product/01-login.md](product/01-login.md).
@@ -167,15 +168,15 @@ Aligned with OpenAPI `LoginRequest` examples and the Login screen seed hint. Ful
 
 ## Development runtime (API)
 
-**Default:** OpenAPI-driven Mockoon or Prism on host port **8081**. The app emulator base URL matches OpenAPI `servers`:
+**Default since HR-78:** the real Spring Boot backend on host port **8080**. OpenAPI-driven Mockoon or Prism on **8081** remains available for offline/contract work.
 
-| Client | Base URL |
-|--------|----------|
-| Android emulator → host mock | `http://10.0.2.2:8081/` |
-| Host machine / curl | `http://localhost:8081/` |
-| Physical device | `http://<host-lan-ip>:8081/` |
+| Client | Spring Boot (default) | Mockoon / Prism |
+|--------|-----------------------|-----------------|
+| Android emulator → host | `http://10.0.2.2:8080/` | `http://10.0.2.2:8081/` |
+| Host machine / curl | `http://localhost:8080/` | `http://localhost:8081/` |
+| Physical device | `http://<host-lan-ip>:8080/` | `http://<host-lan-ip>:8081/` |
 
-Configured in `RetrofitInstance.BASE_URL` (default Mockoon/Prism). An optional real Spring Boot backend is often on host `:8080` and requires changing the base URL deliberately.
+Selected by `USE_MOCK_SERVER` in `network/dto/RetrofitInstance.kt` (`false` = Spring Boot). Note the booking/delivery/return routes exist only on the backend branch `HR-80` — see [product/05-offline-fallback.md](product/05-offline-fallback.md).
 
 Mock servers and regeneration: [api/README.md](api/README.md), [project-environment.md](project-environment.md), [`mocks/README.md`](../mocks/README.md).
 

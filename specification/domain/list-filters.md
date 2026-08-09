@@ -11,15 +11,19 @@
 
 | Field | Type | Notes |
 |-------|------|--------|
-| `bookingId` | string | Stable id (e.g. `DLV-001`, `RET-002`) |
+| `bookingId` | int64 | Backend `Booking.id` (identity column) — numeric since HR-78 |
 | `customerName` | string | Customer / site owner |
 | `startDate` | date (ISO-8601) | Hire / delivery start |
 | `endDate` | date (ISO-8601) | Hire / return end |
 | `bookingStatus` | enum | See [booking-status-machine.md](booking-status-machine.md) |
-| `projectLocation` | string | Address or site description |
-| `assetName` | string | Equipment description |
+| `siteAddress` | string | Address or site description |
+| `assetName` | string | Equipment description — **one asset only**, see [03-deliveries.md](../product/03-deliveries.md) known issues |
 | `serialNumber` | string | Model / serial label |
-| `quantity` | int | Units on the booking |
+| `deliveryNotes` | string | Free-text handling instructions for the driver |
+
+> **HR-78 rename.** `projectLocation` → `siteAddress` and `quantity` → `deliveryNotes` to match the
+> Spring `BookingResponse`. `quantity` has **no backend equivalent** and was dropped, not renamed —
+> see the multi-asset known issue in [03-deliveries.md](../product/03-deliveries.md).
 
 Kotlin: `data class Booking` in `data/models/Bookings.kt`.  
 Wire: OpenAPI `Booking` / DTO `BookingDto`.
@@ -32,15 +36,15 @@ Wire: OpenAPI `Booking` / DTO `BookingDto`.
 
 Projection of a booking for the Deliveries screen (`data/models/Deliveries.kt`):
 
-- `bookingId`, `customerName`, `startDate`, `projectLocation`
-- `assetName`, `serialNumber`, `quantity`, `bookingStatus`
+- `bookingId`, `customerName`, `startDate`, `siteAddress`
+- `assetName`, `serialNumber`, `deliveryNotes`, `bookingStatus`
 
 ### ReturnItem
 
 Projection of a booking for the Returns screen (`data/models/Returns.kt`):
 
-- `bookingId`, `customerName`, `endDate`, `projectLocation`
-- `assetName`, `serialNumber`, `quantity`, `bookingStatus`
+- `bookingId`, `customerName`, `endDate`, `siteAddress`
+- `assetName`, `serialNumber`, `deliveryNotes`, `bookingStatus`
 
 ---
 
@@ -160,9 +164,12 @@ Mocks that implement list endpoints should still apply the same filter semantics
 
 `MockDataRepository` uses `LocalDate.now()` for “today” so **offline seed** rows always match client filters:
 
-| Pattern | Dates | Statuses used |
+| Seed row | Dates | Statuses used |
 |---------|-------|----------------|
-| `DLV-*` | `startDate = today`, `endDate = today + 7` | `CONFIRMED` or `MOBILISED` |
-| `RET-*` | `startDate = today - 7`, `endDate = today` | `MOBILISED` or `COMPLETED` |
+| Delivery-shaped | `startDate = today`, `endDate = today + 7` | `CONFIRMED` or `MOBILISED` |
+| Return-shaped | `startDate = today - 7`, `endDate = today` | `MOBILISED` or `COMPLETED` |
+
+Seed `bookingId`s are sequential `Long`s (`1L`, `2L`, …) matching the backend identity column —
+the earlier `DLV-*` / `RET-*` string ids were removed by HR-78.
 
 JSON fixtures under `specification/api/examples/` use a fixed calendar day (`2026-08-03`) for stable mocks. The app shows those rows via **`GET /api/deliveries`** / **`GET /api/returns`** without requiring device “today” to equal the fixture date.

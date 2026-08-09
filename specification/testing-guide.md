@@ -20,13 +20,24 @@ This guide is **how to run and verify**. Expected product behaviour remains in [
 
 ### Base URLs
 
-| Client | Base URL |
-|--------|----------|
-| Host machine (Postman, curl, browser) | `http://localhost:8081` |
-| Android **emulator** | `http://10.0.2.2:8081/` |
-| Physical device | `http://<your-host-LAN-IP>:8081/` (must match app `BASE_URL`) |
+| Client | Spring Boot (app default) | Mockoon / Prism |
+|--------|---------------------------|-----------------|
+| Host machine (Postman, curl, browser) | `http://localhost:8080` | `http://localhost:8081` |
+| Android **emulator** | `http://10.0.2.2:8080/` | `http://10.0.2.2:8081/` |
+| Physical device | `http://<your-host-LAN-IP>:8080/` | `http://<your-host-LAN-IP>:8081/` |
 
-App default: `com.heavyrental.network.RetrofitInstance` → `http://10.0.2.2:8081/` (Mockoon/Prism on host port **8081**).
+App default since HR-78: `com.heavyrental.network.RetrofitInstance` → `http://10.0.2.2:8080/`
+(`USE_MOCK_SERVER = false`). Set it to `true` for the Mockoon column.
+
+> **Before testing against Spring Boot:** the seven booking/delivery/return routes exist only on the
+> backend branch `HR-80` (`SPEC-api-index.md` §2.2) — on its `develop` they return `404`. Confirm first:
+>
+> ```bash
+> curl -i -s http://localhost:8080/api/bookings -H "Authorization: Bearer $ACCESS"
+> ```
+>
+> A `404` means the backend is on the wrong branch, not that your setup is broken. The app currently
+> reports it as a connectivity failure — see [05-offline-fallback.md](product/05-offline-fallback.md) O2.
 
 ---
 
@@ -203,7 +214,7 @@ Fixture dates may be fixed (e.g. `2026-08-03`); that is expected for the mock.
 | Field | Value |
 |-------|--------|
 | Method | `PATCH` |
-| URL | `{{baseUrl}}/api/deliveries/DLV-003/status` |
+| URL | `{{baseUrl}}/api/deliveries/3/status` (numeric `bookingId` since HR-78) |
 | Header | `Content-Type: application/json` |
 | Header (optional) | `Authorization: Bearer {{accessToken}}` |
 | Body | see below |
@@ -224,7 +235,7 @@ Product transition: `CONFIRMED` → `MOBILISED` — [product/03-deliveries.md](p
 | Field | Value |
 |-------|--------|
 | Method | `PATCH` |
-| URL | `{{baseUrl}}/api/returns/RET-002/status` |
+| URL | `{{baseUrl}}/api/returns/8/status` (numeric `bookingId` since HR-78) |
 | Header | `Content-Type: application/json` |
 | Body | |
 
@@ -268,10 +279,11 @@ Product transition: `CONFIRMED` → `MOBILISED` — [product/03-deliveries.md](p
 2. App base URL is the emulator alias:
 
 ```text
-http://10.0.2.2:8081/
+http://10.0.2.2:8080/   (default — Spring Boot)
+http://10.0.2.2:8081/   (USE_MOCK_SERVER = true — Mockoon/Prism)
 ```
 
-(`RetrofitInstance.BASE_URL` — not `localhost`, and not Spring’s `:8080` unless intentional.)
+(Set in `RetrofitInstance` — always the `10.0.2.2` alias from the emulator, never `localhost`.)
 
 3. Cleartext HTTP is allowed for `10.0.2.2` (`AndroidManifest` + `network_security_config`).
 
@@ -356,8 +368,8 @@ AUTH_ERROR
 ### 5.5 Physical device
 
 1. Find host LAN IP (e.g. `ipconfig` on Windows).
-2. Ensure phone and PC are on the same network; firewall allows inbound **8081**.
-3. Set app `BASE_URL` to `http://<LAN-IP>:8081/`.
+2. Ensure phone and PC are on the same network; firewall allows inbound **8080** (Spring Boot) or **8081** (Mockoon).
+3. Point `RetrofitInstance` at `http://<LAN-IP>:8080/` or `:8081/` to match the target you're running.
 4. Extend cleartext config for that IP if needed.
 5. Mock must listen on `0.0.0.0` (default `MOCK_HOST`).
 
@@ -367,15 +379,20 @@ AUTH_ERROR
 
 Use this as a short QA pass:
 
-- [ ] `npm run mock:mockoon` is running without errors  
+- [ ] Target is running: backend on `HR-80` (`curl` returns non-`404`), **or** `npm run mock:mockoon` without errors  
 - [ ] `npm run mock:verify` passes **or** curl shows non-empty `/api/deliveries`  
 - [ ] Postman: auth handshake works; deliveries/returns/bookings return data  
 - [ ] Postman: PATCH delivery/return status returns 200  
-- [ ] Emulator app: `BASE_URL` is `http://10.0.2.2:8081/`  
+- [ ] Emulator app: base URL matches the target (`:8080` default, `:8081` if `USE_MOCK_SERVER = true`)  
 - [ ] App login reaches Home  
 - [ ] Delivery List is **not empty**  
 - [ ] Return List is **not empty**  
-- [ ] Mobilise and/or complete update UI (and attempt PATCH)  
+- [ ] Mobilise and/or complete update UI (and attempt PATCH)
+
+> **Do not record invalid-transition or authorisation cases as `PASS` from the app.** Local state is
+> applied regardless of the API result ([05-offline-fallback.md](product/05-offline-fallback.md) **O1**),
+> so a rejected `400` and a `403` both render as success. Verify those cases in Postman against the
+> real backend, and mark the in-app result `NOT VERIFIED` until O1 is decided.  
 - [ ] (Optional) Stopping mock surfaces offline/network messaging as specified  
 
 ---
