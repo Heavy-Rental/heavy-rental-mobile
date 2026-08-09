@@ -6,17 +6,17 @@
 
 ## Base URL (development)
 
-Default client target is **Mockoon or Prism on port 8081** (OpenAPI `servers` and generated Mockoon env).
+Default client target since HR-78 is the **real Spring Boot backend on port 8080**. Mockoon/Prism on **8081** stays the contract/offline target and is what the OpenAPI `servers` block and generated Mockoon env describe.
 
-| Client | URL |
-|--------|-----|
-| Android emulator | `http://10.0.2.2:8081/` |
-| Host machine / Mockoon | `http://localhost:8081/` |
-| Physical device | `http://<host-lan-ip>:8081/` |
+| Client | Spring Boot (app default) | Mockoon / Prism |
+|--------|---------------------------|-----------------|
+| Android emulator | `http://10.0.2.2:8080/` | `http://10.0.2.2:8081/` |
+| Host machine | `http://localhost:8080/` | `http://localhost:8081/` |
+| Physical device | `http://<host-lan-ip>:8080/` | `http://<host-lan-ip>:8081/` |
 
-Configured in app code: `com.heavyrental.network.RetrofitInstance` (`BASE_URL` defaults to the emulator mock URL above).
+Configured in app code: `com.heavyrental.network.RetrofitInstance` — `USE_MOCK_SERVER` (`false` = Spring Boot, `true` = Mockoon).
 
-Optional real Spring Boot backend is often on host port `8080` and is **not** the documented default — change `BASE_URL` deliberately if you switch.
+This file remains the **contract** source of truth; the app pointing at a real backend does not change that. Where the two disagree, the divergence is recorded in the relevant product spec rather than silently resolved in favour of the implementation.
 
 Product auth behaviour: [product/01-login.md](../product/01-login.md).
 

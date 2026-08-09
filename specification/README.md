@@ -47,8 +47,9 @@ When layers conflict, resolve in this order: **product intent → domain rules �
 
 **Runtime (dev):**
 
-- Default HTTP mock: Mockoon or Prism on host port `8081` (OpenAPI `servers`)
-- Android emulator base URL: `http://10.0.2.2:8081/` — `RetrofitInstance.BASE_URL`
+- Default app target since HR-78: Spring Boot backend on host port `8080` — emulator `http://10.0.2.2:8080/`
+- Mock alternative: Mockoon or Prism on host port `8081` (OpenAPI `servers`) — emulator `http://10.0.2.2:8081/`
+- Selected by `USE_MOCK_SERVER` in `network/dto/RetrofitInstance.kt` (`false` = Spring Boot)
 - Auth: interim → access JWT via `/api/auth/*` ([product/01-login.md](product/01-login.md))
 - In-app booking seed: `MockDataRepository.bookingList` (used until API succeeds, and as fallback on list/status failure)
 - List load on shell start: `AppViewModel.loadData()` → `GET /api/deliveries`, `GET /api/returns` (and bookings) via `LaunchedEffect` in `HeavyRentalApp`

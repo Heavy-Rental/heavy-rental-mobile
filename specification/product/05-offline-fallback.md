@@ -114,18 +114,115 @@ When `networkError != null`, `HeavyRentalApp` shows a top banner using the Mater
 
 ## Network configuration (dev)
 
-Default is **Mockoon/Prism on port 8081** (app emulator base URL matches OpenAPI):
+Default since HR-78 is the **real Spring Boot backend on port 8080**. Mockoon/Prism on 8081 remains
+available behind a compile-time flag.
 
-| Context | Base URL |
-|---------|----------|
-| Android emulator → host | `http://10.0.2.2:8081/` |
-| Host machine / curl | `http://localhost:8081/` or `http://127.0.0.1:8081/` |
-| Physical device | Host LAN IP, e.g. `http://192.168.x.x:8081/` (must match `RetrofitInstance`) |
+| Target | Emulator → host | Host machine / curl |
+|--------|-----------------|---------------------|
+| Spring Boot (**default**) | `http://10.0.2.2:8080/` | `http://localhost:8080/` |
+| Mockoon / Prism | `http://10.0.2.2:8081/` | `http://localhost:8081/` |
 
-Configured in: `network/dto/RetrofitInstance.kt` (`BASE_URL`).  
+Physical device: substitute the host LAN IP (e.g. `http://192.168.x.x:8080/`) and keep it in sync
+with `RetrofitInstance`.
+
+Configured in `network/dto/RetrofitInstance.kt`:
+
+```kotlin
+private const val USE_MOCK_SERVER = false   // true = Mockoon 8081, false = Spring Boot 8080
+```
+
 Cleartext HTTP is used in dev; see `res/xml/network_security_config.xml`.
 
+> **Backend availability.** The seven booking/delivery/return routes exist only on the backend branch
+> `HR-80`, not on its `develop` (`SPEC-api-index.md` §2.2). Against a `develop` backend they return
+> `404`, which this app currently reports as a connectivity failure — see **O2** below.
+
+> **Environment selection is a tracked source edit** *(ticket: TBD)*. `USE_MOCK_SERVER` is a
+> committed constant, so the wrong value will eventually be pushed. A properties-based approach
+> (`app/api.properties` + a gitignored `local.properties` override → `BuildConfig`) was built and
+> merged as PR #7 (commit `8bafd09`), then reverted whole by PR #9 — recover it from git rather
+> than rebuilding. Note `8bafd09` and HR-78 rewrite this same file incompatibly, so it must be
+> rebased onto HR-78.
+
 Mock servers: [`mocks/README.md`](../../mocks/README.md) and [api/README.md](../api/README.md).
+
+---
+
+## Open questions raised by HR-78
+
+HR-78 changed the default backend from Mockoon to Spring Boot. Two v1 principles in this document
+were written against a mock that cannot fail in these ways, and their behaviour has inverted now
+that a real backend is on the other end. **Neither is decided here** — both are recorded so the
+decision is made deliberately rather than by default.
+
+### O1 — Optimistic status updates vs. server-enforced transitions *(ticket: TBD)*
+
+**Current specified behaviour:** Principle 3 above, and the "Ordering note (v1)" — local state is
+updated after the API attempt regardless of outcome, with no rollback. Mirrored in
+[domain/booking-status-machine.md](../domain/booking-status-machine.md) transition guards, and
+implemented in `AppViewModel.updateBookingStatus`. The code matches the spec exactly.
+
+**Why it was written that way:** Mockoon returns `200` to any request and cannot reject a
+transition, so the client's own preconditions were the only guard in existence. Applying locally
+after a failed PATCH could only ever mean "the network was down", never "the server said no" — and
+keeping the app usable in the field was the point of this feature.
+
+**What changed:** the Spring backend enforces the same two transitions server-side and returns
+`400` on anything else (`SPEC-booking-delivery-return-api.md` §4, Requirements 4.2 and 6). A
+rejected transition now still ends in the new status on screen. Two consequences:
+
+1. **Verification.** Any test of an invalid transition passes visually regardless of what the server
+   did, so the state machine cannot currently be validated end-to-end through the app.
+2. **Authorisation.** `ROLE_DRIVER` is excluded from every protected route today
+   (`SPEC-api-index.md` §4), so a driver's status update returns `403` — and shows as success.
+
+**Options, unweighted:**
+
+| Option | Effect |
+|--------|--------|
+| Keep as specified | Offline field use preserved; invalid transitions and `403`s remain invisible |
+| Server-authoritative | Local state changes only on a successful PATCH; load fallback (seed data) unaffected |
+| Split by failure type | Apply locally on `IOException` (genuinely offline), reject on `HttpException` (server said no) — depends on **O2** |
+
+**Decision owner:** product + tech lead. Until it is made, invalid-transition test results should be
+recorded as `NOT VERIFIED`, not `PASS`.
+
+### O2 — All failures report as connectivity failures *(ticket: TBD)*
+
+`loadData()` and the status-update path catch bare `Exception`, so an `HttpException` (`400`,
+`403`, `404`) is indistinguishable from an `IOException` (host unreachable). Both render the
+"Could not reach API — showing mock data" copy specified above. A `404` from a backend running
+`develop` instead of `HR-80` has already been misdiagnosed as a Docker networking problem.
+
+`AppViewModel.login()` already distinguishes the two correctly and maps status codes to specific
+copy — the same pattern applied to `loadData()` would resolve this.
+
+**Note:** the error copy specified in this document is only correct for the `IOException` case.
+Whatever wording replaces it for HTTP failures should be added here in the same change.
+
+**Status:** pre-existing (present on `develop` before HR-78); surfaced by the switch to a real
+backend. Prerequisite for the third option under **O1**.
+
+### O3 — `GET /api/bookings` has no observable effect *(ticket: TBD)*
+
+`loadData()` calls `GET /api/bookings` and assigns the result to `_bookings`, per the "Successful
+bookings load replaces booking seed only" scenario above. But **no screen collects that state** —
+`HeavyRentalApp` collects `deliveries`, `returns`, `state`, and `networkError` only. Its sole
+remaining effect is a third-choice lookup in `updateBookingStatus`, reached only when a booking is
+absent from both list states, which cannot happen for any row the operator can actually tap.
+
+So the call's success or failure is visible **only in the OkHttp log**, and its payload never
+reaches the UI.
+
+**Consequence for testing:** the acceptance step covering `GET /api/bookings` cannot be verified
+from the app. Either accept logcat as the evidence and say so explicitly in the review, or record
+that step as not mobile-testable — but decide, rather than leaving it ambiguous at sign-off.
+
+**Recommended fix:** either drop the call from `loadData()` until a screen needs it, or give it a
+consumer (a booking detail screen is already unbuilt — `PUT`/`GET`-by-id exist in
+`HeavyRentalApiService` with no repository method or UI behind them).
+
+**Status:** pre-existing on `develop`, not a regression from HR-78.
 
 ---
 

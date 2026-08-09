@@ -50,10 +50,10 @@ Each card exposes (aligned with delivery list pattern):
 |-----------------|--------|
 | Booking id | Prefixed as `ID: {bookingId}` |
 | Status badge | Mobilised / Completed |
-| Asset name + serial number | Primary title lines |
-| Quantity | Shown when `quantity > 1` as `Qty: N` |
+| Asset name + serial number | Primary title lines — **one asset only**, see [03-deliveries.md](03-deliveries.md) K1 |
+| Delivery notes | Shown when `deliveryNotes` is non-blank, as `Note: {text}` |
 | Customer name | Person icon row |
-| Project location | Location icon row |
+| Site address | Location icon row (`siteAddress`) |
 | Open in Google Maps | Same geo / web fallback as deliveries |
 | Complete action | Visible only when status is `MOBILISED` |
 
@@ -74,7 +74,7 @@ Completing a return requires confirmation (same pattern as mobilise):
 Feature: Returns
 
   Scenario: Operator completes a mobilised return
-    Given a return item with bookingId "RET-002" and status MOBILISED
+    Given a return item with bookingId 8 and status MOBILISED
     When the operator marks the return as completed
     Then the return item status becomes COMPLETED
     And the in-memory returns list is updated for that bookingId
@@ -139,6 +139,22 @@ Offline behaviour: [product/05-offline-fallback.md](05-offline-fallback.md).
 
 Membership rules: [domain/list-filters.md](../domain/list-filters.md).  
 Contract examples: [api/examples/returns.json](../api/examples/returns.json).
+
+---
+
+## Known issues
+
+Both apply identically to this screen; the primary write-up lives with the delivery list so the two
+don't drift apart. See [03-deliveries.md](03-deliveries.md) — Known issues.
+
+| Ref | Summary | Status |
+|-----|---------|--------|
+| K1 | A multi-asset booking shows only one asset — `ReturnItemResponse` carries a single `assetName`/`serialNumber` and the server discards the rest | Blocked on a backend contract decision |
+| K2 | The `Qty: N` badge was removed by HR-78 (`quantity` has no backend equivalent) | Deliberate; restore with K1 |
+| K3 | Unknown status renders a grey "Unknown" badge; empty `assetName` renders a blank card title | Pre-existing |
+
+For returns specifically, K1 means a driver can mark a booking `COMPLETED` while a second asset is
+still on site, with nothing on the card indicating it exists.
 
 ---
 

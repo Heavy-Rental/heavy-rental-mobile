@@ -21,7 +21,18 @@ In v1, authentication is an **HTTP interim → access JWT handshake** defined in
 
 Tokens are held **in memory only** (`TokenSession`). There is no secure storage or automatic refresh in v1.
 
-**Default dev server:** Mockoon or Prism on port **8081**. The Android emulator base URL is `http://10.0.2.2:8081/` (`RetrofitInstance.BASE_URL`). See [project-environment.md](../project-environment.md) and [`mocks/README.md`](../../mocks/README.md).
+**Default dev server (since HR-78):** the real Spring Boot backend on port **8080** — emulator base URL `http://10.0.2.2:8080/`. Mockoon/Prism on **8081** remains available via `USE_MOCK_SERVER = true` in `RetrofitInstance`. See [05-offline-fallback.md](05-offline-fallback.md) for the full table, [project-environment.md](../project-environment.md) and [`mocks/README.md`](../../mocks/README.md).
+
+**Seeded accounts** (backend `data.sql`; `SPEC-auth-login-logout.md` §8.3):
+
+| Email | Password | Role |
+|-------|----------|------|
+| `admin@localhost` | `admin1234` | ADMIN |
+| `alex.tan@example.sg` | `customer123` | USER |
+| `ravi.kumar@example.sg` | `admin123` | ADMIN |
+| `ah.tan@example.sg` | `driver123` | DRIVER |
+
+A seeded login returning `invalid_credentials` means the backend hasn't restarted since `data.sql` last changed — it upserts `users` on every boot.
 
 ---
 
@@ -29,7 +40,29 @@ Tokens are held **in memory only** (`TokenSession`). There is no secure storage 
 
 - **Admin / operator** — field or office staff managing mobilisation and returns
 
-v1 has a single operator role (no roles API). Authorisation beyond “has a valid access token” is out of scope.
+v1 treats every authenticated user as a single operator. Authorisation beyond “has a valid access token” is out of scope for the client.
+
+> **Correction (HR-78).** The earlier wording — *“no roles API”* — is no longer accurate. The backend
+> has had a role model since before this branch: `User.role` is `USER` / `ADMIN` / `DRIVER`, and the
+> access JWT carries a `roles` claim (`SPEC-auth-login-logout.md` §4). What is missing is client
+> *visibility*: `LoginResponse` exposes only `accessToken`, `tokenType`, `expiresIn`, and `username`,
+> so the app has no server-provided role to adapt its UI with. See **L1** below.
+
+### L1 — Roles are not visible to the client *(ticket: TBD)*
+
+The app cannot vary its UI by role, and cannot anticipate an authorisation failure before making a
+call. Two consequences worth recording:
+
+- **`ROLE_DRIVER` is locked out of every business route today.** The backend's blanket rule grants
+  only `ROLE_USER`/`ROLE_ADMIN` (`SPEC-api-index.md` §4), so `ah.tan@example.sg` authenticates
+  successfully and then receives `403` on every list and status call — including the delivery and
+  return endpoints the driver role exists for. That is a backend gap, tracked on their side.
+- **A `403` currently renders as success**, because of the optimistic-update behaviour in
+  [05-offline-fallback.md](05-offline-fallback.md) **O1** and the error classification in **O2**.
+
+**Two possible routes**, not decided here: add `roles` to `LoginResponse` (a backend contract
+change), or decode the `roles` claim from the JWT the app already holds (client-only, no contract
+change). The second needs no coordination and is available today.
 
 ---
 
@@ -179,7 +212,7 @@ Password is sent as entered (no trim). Email **case sensitivity** is defined by 
 | Access Bearer on business calls | `network/AuthInterceptor.kt` |
 | Paths | `network/dto/HeavyRentalApiService.kt` |
 | Auth DTOs | `network/dto/AuthDtos.kt` |
-| Base URL (Mockoon default) | `network/dto/RetrofitInstance.kt` — `http://10.0.2.2:8081/` |
+| Base URL (Spring Boot default) | `network/dto/RetrofitInstance.kt` — `http://10.0.2.2:8080/`; `USE_MOCK_SERVER = true` switches to `:8081` |
 | UI | `ui/screens/LoginScreen.kt` |
 | Unauthenticated shell | `MainActivity` / `HeavyRentalApp` shows only `LoginScreen` when `!isLoggedIn` |
 | HTTP contract | `specification/api/heavyrental-openapi.yaml` |

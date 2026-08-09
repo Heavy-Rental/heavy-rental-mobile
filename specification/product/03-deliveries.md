@@ -50,10 +50,10 @@ Each card exposes:
 |-----------------|--------|
 | Booking id | Prefixed as `ID: {bookingId}` |
 | Status badge | Confirmed (amber) / Mobilised (blue) |
-| Asset name + serial number | Primary title lines |
-| Quantity | Shown when `quantity > 1` as `Qty: N` |
+| Asset name + serial number | Primary title lines — **one asset only**, see Known issues |
+| Delivery notes | Shown when `deliveryNotes` is non-blank, as `Note: {text}` |
 | Customer name | Person icon row |
-| Project location | Location icon row |
+| Site address | Location icon row (`siteAddress`) |
 | Open in Google Maps | `geo:` intent; prefers Google Maps package, else web maps URL |
 | Mark as Mobilised | Visible only when status is `CONFIRMED` |
 
@@ -76,7 +76,7 @@ Mobilise requires confirmation:
 Feature: Deliveries
 
   Scenario: Operator mobilises a confirmed delivery
-    Given a delivery item with bookingId "DLV-003" and status CONFIRMED
+    Given a delivery item with bookingId 3 and status CONFIRMED
     When the operator confirms mobilisation for that item
     Then the delivery item status becomes MOBILISED
     And the in-memory deliveries list is updated for that bookingId
@@ -142,6 +142,59 @@ Offline behaviour: [product/05-offline-fallback.md](05-offline-fallback.md).
 
 Membership rules the **server/mock** should apply when building the payload: [domain/list-filters.md](../domain/list-filters.md).  
 Contract: [api/heavyrental-openapi.yaml](../api/heavyrental-openapi.yaml), examples: [api/examples/deliveries.json](../api/examples/deliveries.json).
+
+---
+
+## Known issues
+
+Recorded here rather than fixed. Each entry states a reproduction, a recommended fix, and its
+status, following the same convention as the backend's `SPEC-booking-delivery-return-api.md` §6.
+
+### K1 — A multi-asset booking shows only one asset *(ticket: TBD)*
+
+`DeliveryItemResponse` carries a single `assetName`/`serialNumber` pair, but a backend `Booking`
+has one-to-many `booking_items`. The server picks one via
+`BookingMapper.primaryAsset()` → `min(BookingItem.id)` and **silently discards the rest**
+(`SPEC-booking-delivery-return-api.md` §5.3). This client faithfully renders whatever it is sent,
+so the loss is invisible in the UI.
+
+**Reproduce:** backend seed booking `1` has two `BookingItem` rows (JLG 460SJ Boom Lift, Toyota
+8FD25 Forklift). `GET /api/deliveries` returns the boom lift only.
+
+**Operational consequence:** a driver loads one machine, marks the booking mobilised, and leaves the
+second on site. The app gives no indication a second asset exists.
+
+**Recommended fix:** contract change first — `assetName`/`serialNumber` become a list, or a separate
+`items` array is added — then both sides. Cannot be fixed client-side; the data never arrives.
+The backend spec records the same issue in its §6.2 with a matching recommendation.
+
+**Status:** blocked on a backend contract decision. Not a regression from HR-78.
+
+### K2 — The `Qty: N` badge was removed *(ticket: TBD)*
+
+Until HR-78 the card showed `Qty: N` when `quantity > 1`. `quantity` has no equivalent in the Spring
+`BookingResponse`, so the field was dropped from the model and the badge with it. That badge was the
+only UI that made **K1** visible to a driver.
+
+**Status:** deliberate, documented here so the removal isn't mistaken for a rendering bug. Restore
+alongside K1 once the contract can express more than one asset.
+
+### K3 — Card rendering for out-of-range values *(ticket: TBD)*
+
+Two cases where a card renders in a way that reads as broken rather than as data:
+
+- **Unknown status → grey "Unknown" badge.** The four display-only statuses
+  (`PENDING_DEPOSIT`, `PENDING_CONFIRMED`, `CANCELLED`, and any value added backend-side later)
+  have no badge styling of their own. They shouldn't appear on the delivery list given its
+  membership filter, but `GET /api/bookings` can return all six.
+- **Empty `assetName` → blank title.** Documented backend behaviour, not a client fault: a booking
+  with no `BookingItem` rows maps to `assetName: ""` / `serialNumber: ""`
+  (`SPEC-booking-delivery-return-api.md` §5.3). The card renders an empty heading.
+
+**Recommended fix:** an explicit placeholder for each (`"—"` or `"No asset recorded"`), so the
+absence is legible as data rather than as a rendering failure.
+
+**Status:** pre-existing. Applies equally to the return list.
 
 ---
 
