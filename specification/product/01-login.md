@@ -1,16 +1,195 @@
-# Feature index: Admin login
+# Feature: Admin login
 
 **Status:** Implemented (v1)  
-**Canonical Spec Kit spec:** [`specs/001-admin-login/spec.md`](../../specs/001-admin-login/spec.md)
+**Screens:** `LoginScreen`  
+**Navigation:** `AppScreen.LOGIN` → success navigates to `AppScreen.HOME`  
+**Code root:** `com.heavyrental`  
+**API contract:** [`api/heavyrental-openapi.yaml`](../api/heavyrental-openapi.yaml) (Auth tag)
 
-Operators authenticate via interim → access JWT before using Home, Deliveries, or Returns. Tokens are in-memory only in v1.
+---
 
-## Related
+## Summary
 
-| Resource | Path |
-|----------|------|
-| Spec Kit (canonical) | [`specs/001-admin-login/spec.md`](../../specs/001-admin-login/spec.md) |
-| API endpoint config (properties) | [`specs/084-api-endpoint-toggle/spec.md`](../../specs/084-api-endpoint-toggle/spec.md), `app/api.properties` |
-| Offline lists (not login) | [`specs/005-offline-fallback/spec.md`](../../specs/005-offline-fallback/spec.md) |
-| OpenAPI Auth | [`../api/heavyrental-openapi.yaml`](../api/heavyrental-openapi.yaml) |
-| Testing | [`../testing-guide.md`](../testing-guide.md) |
+Operators must authenticate before accessing Home, Deliveries, or Returns.
+
+In v1, authentication is an **HTTP interim → access JWT handshake** defined in OpenAPI:
+
+1. `GET /api/auth/getBearerToken` — mint a short-lived interim JWT (`text/plain`)
+2. `POST /api/auth/login` — upgrade interim JWT + email/password to an access (session) JWT
+3. Business calls use the access token as `Authorization: Bearer …` (via `AuthInterceptor`)
+4. `POST /api/auth/logout` — revoke the access token (best-effort from the client)
+
+Tokens are held **in memory only** (`TokenSession`). There is no secure storage or automatic refresh in v1.
+
+**Default dev server:** Mockoon or Prism on port **8081**. The Android emulator base URL is `http://10.0.2.2:8081/` (`RetrofitInstance.BASE_URL`). See [project-environment.md](../project-environment.md) and [`mocks/README.md`](../../mocks/README.md).
+
+---
+
+## Actors
+
+- **Admin / operator** — field or office staff managing mobilisation and returns
+
+v1 has a single operator role (no roles API). Authorisation beyond “has a valid access token” is out of scope.
+
+---
+
+## Credentials and environments
+
+| Environment | Credential behaviour | Display name after login |
+|-------------|----------------------|---------------------------|
+| **Mockoon / Prism (port 8081)** | Static canned responses — **does not** verify password or interim JWT. Typical requests receive 200. | From `LoginResponse.username` (fixture: `admin@localhost` → UI shows `Admin`) |
+| **Real Spring Boot backend** (optional; often host port `8080`) | Validates interim JWT + email/password (see backend auth specs referenced from OpenAPI). | From server `username` |
+| **Login UI dev hint** | Shows seed `admin@localhost` / `admin1234` (OpenAPI `LoginRequest` / example) | — |
+
+| Field | Dev seed (OpenAPI + UI hint) |
+|-------|------------------------------|
+| Email | `admin@localhost` |
+| Password | `admin1234` |
+| Display name derivation | Local-part of `username` before `@`, first character uppercased (e.g. `admin@localhost` → `Admin`) |
+
+**Source of truth for request/response shapes:** OpenAPI schemas `LoginRequest`, `LoginResponse`, and examples under [`api/examples/`](../api/examples/).  
+**Do not** treat `MockDataRepository` as an auth credential store — it only seeds booking list data for offline fallback.
+
+---
+
+## Acceptance criteria
+
+### Successful login (API available)
+
+```gherkin
+Feature: Admin login
+
+  Scenario: Valid login against a reachable auth API opens the home screen
+    Given the user is on the login screen
+    And the user is not logged in
+    And the auth API is reachable
+    When the user enters email and password
+    And the user submits login
+    Then the client calls GET /api/auth/getBearerToken
+    And the client calls POST /api/auth/login with the interim Bearer and the credentials body
+    And the access token is stored in the in-memory session
+    And the user is marked as logged in
+    And the admin display name is derived from LoginResponse.username
+    And the current screen is HOME
+    And no login error is shown
+```
+
+Against **Mockoon**, any non-empty body that the mock accepts still returns the canned success response (see mock caveat below).
+
+### Network failure during login
+
+```gherkin
+  Scenario: Unreachable server keeps the user on login
+    Given the user is on the login screen
+    When the user submits login
+    And the auth API is unreachable
+    Then the user remains logged out
+    And the login error "Could not reach the server. Please try again." is shown
+    And the current screen remains LOGIN
+```
+
+Login **requires** a reachable auth API. Offline seed data does **not** allow entry without a successful login handshake. List/status offline behaviour is separate — see [05-offline-fallback.md](05-offline-fallback.md).
+
+### HTTP error responses
+
+```gherkin
+  Scenario: Auth API returns a client error
+    Given the user is on the login screen
+    When the user submits login
+    And the auth API returns HTTP 400
+    Then the login error "Email and password are required." is shown
+
+  Scenario: Invalid credentials or bad interim token
+    Given the user is on the login screen
+    When the user submits login
+    And the auth API returns HTTP 401
+    Then the login error "Invalid email or password." is shown
+
+  Scenario: Wrong token type used for login
+    Given the user is on the login screen
+    When the user submits login
+    And the auth API returns HTTP 403
+    Then the login error "Unable to sign in — please try again." is shown
+```
+
+Other HTTP failures map to: `Login failed ({code}). Please try again.`
+
+**Mockoon caveat:** the local mock typically returns **200** for auth routes and does **not** exercise 400/401/403. Use a real backend (or contract tests) to verify negative credential paths.
+
+### Email handling (client)
+
+```gherkin
+  Scenario: Email is trimmed before the login request
+    Given the user is on the login screen
+    When the user enters email "  admin@localhost  "
+    And the user enters password "admin1234"
+    And the user submits login
+    Then the LoginRequest email sent to the API is "admin@localhost"
+```
+
+Password is sent as entered (no trim). Email **case sensitivity** is defined by the server, not by client-side comparison.
+
+### Logout
+
+```gherkin
+  Scenario: Logout returns to login and clears session state
+    Given the user is logged in
+    And an access token is present in the session
+    When the user chooses logout
+    Then the client attempts POST /api/auth/logout with the access Bearer
+    And the in-memory session is cleared even if the logout call fails
+    And the user is logged out
+    And the current screen is LOGIN
+    And session fields (admin name, login error) are reset
+```
+
+---
+
+## UI notes (v1)
+
+| Element | Behaviour |
+|---------|-----------|
+| Brand | "Heavy Rental" / "Administrator Portal" |
+| Email field | Email keyboard, next IME action |
+| Password field | Visibility toggle |
+| Error | Shown when `loginError` is non-null |
+| Dev seed panel | Shows OpenAPI-aligned seed email/password for local backends |
+| Loading | Submit disabled / progress while `isLoggingIn` |
+
+---
+
+## Out of scope (v1)
+
+- Roles / permissions beyond a single operator session
+- Password reset, MFA, biometric login
+- Secure storage of tokens or credentials (EncryptedSharedPreferences, Keystore)
+- Token refresh / sliding expiry UX
+- Offline or client-only login without calling the auth API
+- Multi-user account switching
+
+---
+
+## Implementation notes
+
+| Concern | Location |
+|---------|----------|
+| Login / logout orchestration | `viewmodel/AppViewModel.kt` — `login`, `logout` |
+| Interim → access handshake | `data/repository/AuthRepository.kt` |
+| In-memory tokens | `network/TokenSession.kt` |
+| Access Bearer on business calls | `network/AuthInterceptor.kt` |
+| Paths | `network/dto/HeavyRentalApiService.kt` |
+| Auth DTOs | `network/dto/AuthDtos.kt` |
+| Base URL (Mockoon default) | `network/dto/RetrofitInstance.kt` — `http://10.0.2.2:8081/` |
+| UI | `ui/screens/LoginScreen.kt` |
+| Unauthenticated shell | `MainActivity` / `HeavyRentalApp` shows only `LoginScreen` when `!isLoggedIn` |
+| HTTP contract | `specification/api/heavyrental-openapi.yaml` |
+| Auth fixtures | `specification/api/examples/interim-token.txt`, `login-response.json`, `logout-response.json` |
+
+---
+
+## Related specs
+
+- [api/README.md](../api/README.md) — base URLs, endpoint summary, mock commands
+- [05-offline-fallback.md](05-offline-fallback.md) — list/status fallback after login (not login itself)
+- [project-environment.md](../project-environment.md) — OpenAPI → Mockoon generation
+- [decisions/002-mock-strategy.md](../decisions/002-mock-strategy.md) — mock layers including canned auth
