@@ -1,6 +1,7 @@
 package com.heavyrental.network
 
 import com.heavyrental.network.dto.BookingDto
+import com.heavyrental.network.dto.BookingUpdateRequestDto
 import com.heavyrental.network.dto.DeliveryItemDto
 import com.heavyrental.network.dto.LoginRequest
 import com.heavyrental.network.dto.LoginResponse
@@ -43,7 +44,10 @@ interface HeavyRentalApiService {
     suspend fun getBooking(@Path("bookingId") bookingId: Long): BookingDto
 
     @PUT("api/bookings/{bookingId}")
-    suspend fun updateBooking(@Path("bookingId") bookingId: Long, @Body booking: BookingDto): BookingDto
+    suspend fun updateBooking(
+        @Path("bookingId") bookingId: Long,
+        @Body booking: BookingUpdateRequestDto
+    ): BookingDto
 
     // ── Deliveries ───────────────────────────────────────────────────────
     @GET("api/deliveries")
@@ -65,4 +69,3 @@ interface HeavyRentalApiService {
         @Body request: StatusUpdateRequest
     ): ReturnItemDto
 }
-
