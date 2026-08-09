@@ -7,14 +7,13 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 
-/**
- * Shared Retrofit / OkHttp stack for the Heavy Rental API.
- *
- * Host selection comes from build-time config (`app/api.properties` →
- * BuildConfig.API_SERVER_TARGET via [ApiEndpointConfig]) and is applied by
- * [BaseUrlInterceptor]. The builder base URL is only a placeholder.
- */
+
 object RetrofitInstance {
+
+    // Android emulator → host Mockoon/Prism (OpenAPI servers + mocks/README).
+    // Host machine: http://localhost:8081/ — start with: npm run mock:mockoon
+    // Real Spring Boot backend (if used instead): http://10.0.2.2:8080/
+    private const val BASE_URL = "http://10.0.2.2:8081/"
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -26,18 +25,17 @@ object RetrofitInstance {
     }
 
     private val okHttpClient = OkHttpClient.Builder()
-        .addInterceptor(BaseUrlInterceptor())
         .addInterceptor(AuthInterceptor())
         .addInterceptor(loggingInterceptor)
         .build()
 
     val api: HeavyRentalApiService by lazy {
         Retrofit.Builder()
-            // Placeholder — BaseUrlInterceptor rewrites host/port per ApiEndpointConfig.
-            .baseUrl(ApiServerTarget.DEFAULT.baseUrl)
+            .baseUrl(BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
             .create(HeavyRentalApiService::class.java)
     }
 }
+

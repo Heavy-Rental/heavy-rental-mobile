@@ -42,20 +42,19 @@ Step-by-step Mockoon + **Postman** + **Android** walkthrough (checklists, auth s
 
 ## Android app
 
-Default target (`api.server.target=MOCKOON` in `app/api.properties`):
+`RetrofitInstance` uses:
 
 ```text
 http://10.0.2.2:8081/
 ```
 
-That is the emulator’s alias for the host machine’s `localhost:8081`.  
-For Spring Boot, set `api.server.target=SPRING_BOOT` (or override in root `local.properties`) → `http://10.0.2.2:8080/` (host `localhost:8080`), then Sync/Rebuild.
+That is the emulator’s alias for the host machine’s `localhost:8081`.
 
-| Client | Mockoon / Prism | Spring Boot |
-|--------|-----------------|-------------|
-| Emulator | `http://10.0.2.2:8081/` | `http://10.0.2.2:8080/` |
-| Host browser / curl | `http://127.0.0.1:8081/` | `http://127.0.0.1:8080/` |
-| Physical device | `http://<your-lan-ip>:8081/` | `http://<your-lan-ip>:8080/` |
+| Client | URL |
+|--------|-----|
+| Emulator | `http://10.0.2.2:8081/` |
+| Host browser / curl | `http://127.0.0.1:8081/` |
+| Physical device | `http://<your-lan-ip>:8081/` (update app base URL) |
 
 ## Verify
 
