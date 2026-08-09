@@ -32,7 +32,7 @@ private enum class ReturnFilter { ALL, MOBILISED, COMPLETED }
 @Composable
 fun ReturnListScreen(
     returns: List<ReturnItem>,
-    onStatusUpdate: (id: String) -> Unit,
+    onStatusUpdate: (id: Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var selectedFilter by remember { mutableStateOf(ReturnFilter.ALL) }
@@ -116,7 +116,7 @@ fun ReturnListScreen(
 @Composable
 private fun ReturnCard(
     item: ReturnItem,
-    onStatusUpdate: (id: String) -> Unit
+    onStatusUpdate: (id: Long) -> Unit
 ) {
     val context = LocalContext.current
     var showConfirmDialog by remember { mutableStateOf(false) }
@@ -181,10 +181,10 @@ private fun ReturnCard(
         Text(item.assetName, style = MaterialTheme.typography.titleLarge, color = Foreground)
         Text(item.serialNumber, style = MaterialTheme.typography.bodySmall, color = MutedForeground)
 
-        if (item.quantity > 1) {
+        if (item.deliveryNotes.isNotBlank()) {
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                "Qty: ${item.quantity}",
+                "Note: ${item.deliveryNotes}",
                 style = MaterialTheme.typography.bodySmall,
                 color = BlueAccent,
                 fontWeight = FontWeight.SemiBold

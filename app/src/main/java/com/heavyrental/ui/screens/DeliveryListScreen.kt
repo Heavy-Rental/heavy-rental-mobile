@@ -32,7 +32,7 @@ private enum class DeliveryFilter { ALL, CONFIRMED, MOBILISED }
 @Composable
 fun DeliveryListScreen(
     deliveries: List<DeliveryItem>,
-    onStatusUpdate: (id: String) -> Unit,
+    onStatusUpdate: (id: Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var selectedFilter by remember { mutableStateOf(DeliveryFilter.ALL) }
@@ -116,7 +116,7 @@ fun DeliveryListScreen(
 @Composable
 private fun DeliveryCard(
     item: DeliveryItem,
-    onStatusUpdate: (id: String) -> Unit
+    onStatusUpdate: (id: Long) -> Unit
 ) {
     val context = LocalContext.current
     var showConfirmDialog by remember { mutableStateOf(false) }
@@ -183,10 +183,10 @@ private fun DeliveryCard(
         Text(item.assetName, style = MaterialTheme.typography.titleLarge, color = Foreground)
         Text(item.serialNumber, style = MaterialTheme.typography.bodySmall, color = MutedForeground)
 
-        if (item.quantity > 1) {
+        if (item.deliveryNotes.isNotBlank()) {
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                "Qty: ${item.quantity}",
+                "Note: ${item.deliveryNotes}",
                 style = MaterialTheme.typography.bodySmall,
                 color = Primary,
                 fontWeight = FontWeight.SemiBold

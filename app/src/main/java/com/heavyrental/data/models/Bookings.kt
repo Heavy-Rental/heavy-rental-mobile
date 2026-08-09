@@ -3,18 +3,18 @@ package com.heavyrental.data.models
 import java.time.LocalDate
 
 data class Booking(
-    val bookingId: String,
+    val bookingId: Long,
     val customerName: String,
 
     val startDate: LocalDate,
     val endDate: LocalDate,
-    val bookingStatus: BookingStatus,
+    val bookingStatus: BookingStatus?,
     val projectLocation: String,
 
     // Asset information
     val assetName: String,
     val serialNumber: String,
-    val quantity: Int,
+    val deliveryNotes: String,
 )
 
 // ── Derived views ─────
@@ -26,7 +26,7 @@ fun Booking.toDeliveryItem(): DeliveryItem = DeliveryItem(
     projectLocation = projectLocation,
     assetName = assetName,
     serialNumber = serialNumber,
-    quantity = quantity,
+    deliveryNotes = deliveryNotes,
     bookingStatus = bookingStatus
 )
 
@@ -37,7 +37,7 @@ fun Booking.toReturnItem(): ReturnItem = ReturnItem(
     projectLocation = projectLocation,
     assetName = assetName,
     serialNumber = serialNumber,
-    quantity = quantity,
+    deliveryNotes = deliveryNotes,
     bookingStatus = bookingStatus
 )
 
@@ -50,4 +50,3 @@ fun List<Booking>.toDeliveryItems(): List<DeliveryItem> =
 fun List<Booking>.toReturnItems(): List<ReturnItem> =
     filter { it.endDate == LocalDate.now() && (it.bookingStatus == BookingStatus.MOBILISED || it.bookingStatus == BookingStatus.COMPLETED) }
         .map { it.toReturnItem() }
-

@@ -1,6 +1,7 @@
 package com.heavyrental.network
 
 import com.heavyrental.network.dto.BookingDto
+import com.heavyrental.network.dto.BookingUpdateRequestDto
 import com.heavyrental.network.dto.DeliveryItemDto
 import com.heavyrental.network.dto.LoginRequest
 import com.heavyrental.network.dto.LoginResponse
@@ -40,10 +41,13 @@ interface HeavyRentalApiService {
     suspend fun getBookings(): List<BookingDto>
 
     @GET("api/bookings/{bookingId}")
-    suspend fun getBooking(@Path("bookingId") bookingId: String): BookingDto
+    suspend fun getBooking(@Path("bookingId") bookingId: Long): BookingDto
 
     @PUT("api/bookings/{bookingId}")
-    suspend fun updateBooking(@Path("bookingId") bookingId: String, @Body booking: BookingDto): BookingDto
+    suspend fun updateBooking(
+        @Path("bookingId") bookingId: Long,
+        @Body booking: BookingUpdateRequestDto
+    ): BookingDto
 
     // ── Deliveries ───────────────────────────────────────────────────────
     @GET("api/deliveries")
@@ -51,7 +55,7 @@ interface HeavyRentalApiService {
 
     @PATCH("api/deliveries/{bookingId}/status")
     suspend fun updateDeliveryStatus(
-        @Path("bookingId") bookingId: String,
+        @Path("bookingId") bookingId: Long,
         @Body request: StatusUpdateRequest
     ): DeliveryItemDto
 
@@ -61,8 +65,7 @@ interface HeavyRentalApiService {
 
     @PATCH("api/returns/{bookingId}/status")
     suspend fun updateReturnStatus(
-        @Path("bookingId") bookingId: String,
+        @Path("bookingId") bookingId: Long,
         @Body request: StatusUpdateRequest
     ): ReturnItemDto
 }
-

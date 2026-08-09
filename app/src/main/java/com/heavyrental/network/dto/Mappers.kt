@@ -11,35 +11,34 @@ import java.time.LocalDate
 
 fun BookingDto.toBooking(): Booking = Booking(
     bookingId = bookingId,
-    customerName = customerName,
-    startDate = LocalDate.parse(startDate),
-    endDate = LocalDate.parse(endDate),
-    bookingStatus = BookingStatus.valueOf(bookingStatus),
-    projectLocation = projectLocation,
+    customerName = customerName.orEmpty(),
+    startDate = startDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: LocalDate.now(),
+    endDate = endDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: LocalDate.now(),
+    bookingStatus = bookingStatus?.let { runCatching { BookingStatus.valueOf(it) }.getOrNull() },
+    projectLocation = siteAddress.orEmpty(),
     assetName = assetName,
     serialNumber = serialNumber,
-    quantity = quantity
+    deliveryNotes = deliveryNotes.orEmpty()
 )
 
 fun DeliveryItemDto.toDeliveryItem(): DeliveryItem = DeliveryItem(
     bookingId = bookingId,
-    customerName = customerName,
-    startDate = LocalDate.parse(startDate),
-    projectLocation = projectLocation,
+    customerName = customerName.orEmpty(),
+    startDate = startDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: LocalDate.now(),
+    projectLocation = siteAddress.orEmpty(),
     assetName = assetName,
     serialNumber = serialNumber,
-    quantity = quantity,
-    bookingStatus = BookingStatus.valueOf(bookingStatus)
+    deliveryNotes = deliveryNotes.orEmpty(),
+    bookingStatus = bookingStatus?.let { runCatching { BookingStatus.valueOf(it) }.getOrNull() }
 )
 
 fun ReturnItemDto.toReturnItem(): ReturnItem = ReturnItem(
     bookingId = bookingId,
-    customerName = customerName,
-    endDate = LocalDate.parse(endDate),
-    projectLocation = projectLocation,
+    customerName = customerName.orEmpty(),
+    endDate = endDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: LocalDate.now(),
+    projectLocation = siteAddress.orEmpty(),
     assetName = assetName,
     serialNumber = serialNumber,
-    quantity = quantity,
-    bookingStatus = BookingStatus.valueOf(bookingStatus)
+    deliveryNotes = deliveryNotes.orEmpty(),
+    bookingStatus = bookingStatus?.let { runCatching { BookingStatus.valueOf(it) }.getOrNull() }
 )
-

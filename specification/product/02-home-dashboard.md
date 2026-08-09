@@ -79,18 +79,51 @@ Shell navigation is required. Home does not own its own tab routing beyond logou
 ## Data loading
 
 ```gherkin
-  Scenario: List data loads when the app shell starts
-    Given the user opens the app
-    When the main shell is composed
+  Scenario: List data loads after the operator authenticates
+    Given the user completes login
+    When isLoggedIn becomes true
     Then loadData is requested
-    And the client calls GET /api/deliveries and GET /api/returns (and optionally GET /api/bookings)
+    And the client calls GET /api/deliveries and GET /api/returns (and GET /api/bookings)
     And if the list APIs succeed, dashboard counts use those payloads
     And if a list API fails, the corresponding counts use mock seed data and an error banner may show
 ```
 
-`loadData()` runs in `LaunchedEffect(Unit)` inside `HeavyRentalApp` (seed lists are available immediately in ViewModel init).
+`loadData()` runs in `LaunchedEffect(state.isLoggedIn)` inside `HeavyRentalApp`, gated on
+`isLoggedIn` — seed lists are available immediately from ViewModel init. It previously ran in
+`LaunchedEffect(Unit)` at app launch, which fired **before** login and therefore before any access
+token existed; corrected by HR-78 (commit `221e1b2`).
+
+**Consequence:** the load fires exactly once per login transition. Re-verifying a change requires
+logging out and back in — see Known issues below.
 
 See [05-offline-fallback.md](05-offline-fallback.md), [03-deliveries.md](03-deliveries.md), [04-returns.md](04-returns.md).
+
+---
+
+## Known issues
+
+### H1 — No loading state; seed data is indistinguishable from live data *(ticket: TBD)*
+
+`loadData()` exposes no in-flight signal. Seed lists are present from ViewModel init, so on a slow
+or failed call the dashboard shows **mock counts that look exactly like real ones**. The error
+banner appears only after a failure resolves; during the request there is no cue at all.
+
+This matters most during acceptance testing against a real backend: a tester can read seed counts,
+believe they came from the API, and pass a check the server never answered.
+
+**Recommended fix:** an `isLoading` flag on `AppState`, and a visual distinction (skeleton, or an
+explicit "showing sample data" marker) whenever displayed lists are seed rather than API data.
+
+**Status:** pre-existing, not a regression from HR-78. Affects Home, Deliveries, and Returns alike.
+
+### H2 — No manual refresh *(ticket: TBD)*
+
+`loadData()` fires only on the login transition, so re-checking a change means logging out and back
+in. [05-offline-fallback.md](05-offline-fallback.md) lists *"Manual 'retry' control"* under Out of
+scope (v1) — a deliberate v1 decision, recorded here because it is a repeated friction point when
+running the acceptance checklist in [testing-guide.md](../testing-guide.md), not because it is a bug.
+
+**Status:** documented non-goal. Revisit if testing cost outweighs the scope saving.
 
 ---
 

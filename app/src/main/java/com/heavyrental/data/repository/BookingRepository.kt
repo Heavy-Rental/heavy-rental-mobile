@@ -15,12 +15,12 @@ class BookingRepository {
     private val api = RetrofitInstance.api
 
     // PATCH /api/deliveries/{bookingId}/status — e.g. CONFIRMED → MOBILISED
-    suspend fun updateDeliveryStatus(bookingId: String, newStatus: BookingStatus) {
+    suspend fun updateDeliveryStatus(bookingId: Long, newStatus: BookingStatus) {
         api.updateDeliveryStatus(bookingId, StatusUpdateRequest(bookingStatus = newStatus.name))
     }
 
     // PATCH /api/returns/{bookingId}/status — e.g. MOBILISED → COMPLETED
-    suspend fun updateReturnStatus(bookingId: String, newStatus: BookingStatus) {
+    suspend fun updateReturnStatus(bookingId: Long, newStatus: BookingStatus) {
         api.updateReturnStatus(bookingId, StatusUpdateRequest(bookingStatus = newStatus.name))
     }
 

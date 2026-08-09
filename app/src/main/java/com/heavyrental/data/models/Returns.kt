@@ -3,14 +3,14 @@ package com.heavyrental.data.models
 import java.time.LocalDate
 
 data class ReturnItem(
-    val bookingId: String,
+    val bookingId: Long,
     val customerName: String,
     val endDate: LocalDate,
     val projectLocation: String,
 
     val assetName: String,
     val serialNumber: String,
-    val quantity: Int,
+    val deliveryNotes: String,
 
-    val bookingStatus: BookingStatus
+    val bookingStatus: BookingStatus?
 )

@@ -22,9 +22,13 @@ info:
 
 servers:
   - url: http://localhost:8081
-    description: Local mock / host machine
+    description: Mockoon / Prism mock — host machine (mock generation target)
   - url: http://10.0.2.2:8081
-    description: Android emulator → host localhost
+    description: Mockoon / Prism mock — Android emulator → host localhost
+  - url: http://localhost:8080
+    description: Spring Boot backend — host machine (app default since HR-78)
+  - url: http://10.0.2.2:8080
+    description: Spring Boot backend — Android emulator → host localhost
 
 tags:
   - name: Auth
@@ -316,8 +320,9 @@ components:
       in: path
       required: true
       schema:
-        type: string
-        example: DLV-003
+        type: integer
+        format: int64
+        example: 3
 
   schemas:
     LoginRequest:
@@ -381,52 +386,66 @@ components:
 
     BookingStatus:
       type: string
-      enum: [CONFIRMED, MOBILISED, COMPLETED]
+      enum: [PENDING_DEPOSIT, PENDING_CONFIRMED, CONFIRMED, MOBILISED, COMPLETED, CANCELLED]
       description: Hire lifecycle status (see specification/domain/booking-status-machine.md)
 
     Booking:
       type: object
+      description: >
+        Nullability follows the backend column definitions (SPEC-entity-repository.md §5.7):
+        customer, start_date, end_date, status, site_address and delivery_notes are all
+        nullable, so the key is always present but its value may be null. Clients must
+        tolerate null rather than failing the whole response. assetName/serialNumber are
+        derived by BookingMapper and default to "" when a booking has no items.
       required:
         - bookingId
         - customerName
         - startDate
         - endDate
         - bookingStatus
-        - projectLocation
+        - siteAddress
         - assetName
         - serialNumber
-        - quantity
+        - deliveryNotes
       properties:
         bookingId:
-          type: string
-          example: DLV-001
+          type: integer
+          format: int64
+          example: 1
         customerName:
           type: string
+          nullable: true
           example: Lim Construction Pte Ltd
         startDate:
           type: string
           format: date
+          nullable: true
           description: ISO-8601 date (yyyy-MM-dd)
           example: "2026-08-03"
         endDate:
           type: string
           format: date
+          nullable: true
           example: "2026-08-10"
         bookingStatus:
-          $ref: "#/components/schemas/BookingStatus"
-        projectLocation:
+          allOf:
+            - $ref: "#/components/schemas/BookingStatus"
+          nullable: true
+        siteAddress:
           type: string
+          nullable: true
           example: 18 Tuas South Ave 14, Singapore 637471
         assetName:
           type: string
+          description: Empty string when the booking has no items — see 03-deliveries.md K1
           example: CAT 320 Hydraulic Excavator
         serialNumber:
           type: string
           example: CAT 320 GC
-        quantity:
-          type: integer
-          minimum: 1
-          example: 1
+        deliveryNotes:
+          type: string
+          nullable: true
+          example: ""
 
     DeliveryItem:
       type: object
@@ -434,30 +453,37 @@ components:
         - bookingId
         - customerName
         - startDate
-        - projectLocation
+        - siteAddress
         - assetName
         - serialNumber
-        - quantity
+        - deliveryNotes
         - bookingStatus
       properties:
         bookingId:
-          type: string
+          type: integer
+          format: int64
         customerName:
           type: string
+          nullable: true
         startDate:
           type: string
           format: date
-        projectLocation:
+          nullable: true
+        siteAddress:
           type: string
+          nullable: true
         assetName:
           type: string
+          description: One asset only — see 03-deliveries.md K1
         serialNumber:
           type: string
-        quantity:
-          type: integer
-          minimum: 1
+        deliveryNotes:
+          type: string
+          nullable: true
         bookingStatus:
-          $ref: "#/components/schemas/BookingStatus"
+          allOf:
+            - $ref: "#/components/schemas/BookingStatus"
+          nullable: true
 
     ReturnItem:
       type: object
@@ -465,30 +491,37 @@ components:
         - bookingId
         - customerName
         - endDate
-        - projectLocation
+        - siteAddress
         - assetName
         - serialNumber
-        - quantity
+        - deliveryNotes
         - bookingStatus
       properties:
         bookingId:
-          type: string
+          type: integer
+          format: int64
         customerName:
           type: string
+          nullable: true
         endDate:
           type: string
           format: date
-        projectLocation:
+          nullable: true
+        siteAddress:
           type: string
+          nullable: true
         assetName:
           type: string
+          description: One asset only — see 03-deliveries.md K1
         serialNumber:
           type: string
-        quantity:
-          type: integer
-          minimum: 1
+        deliveryNotes:
+          type: string
+          nullable: true
         bookingStatus:
-          $ref: "#/components/schemas/BookingStatus"
+          allOf:
+            - $ref: "#/components/schemas/BookingStatus"
+          nullable: true
 
     StatusUpdateRequest:
       type: object

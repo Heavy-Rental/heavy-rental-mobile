@@ -4,42 +4,50 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class BookingDto(
-    val bookingId: String,
-    val customerName: String,
-    val startDate: String,   // ISO-8601, e.g. "2026-08-03" — parsed to LocalDate in the mapper
-    val endDate: String,
-    val bookingStatus: String,
-    val projectLocation: String,
+    val bookingId: Long,
+    val customerName: String? = null,
+    val startDate: String? = null,   // ISO-8601, e.g. "2026-08-03" — parsed to LocalDate in the mapper
+    val endDate: String? = null,
+    val bookingStatus: String? = null,
+    val siteAddress: String? = null,
     val assetName: String,
     val serialNumber: String,
-    val quantity: Int
+    val deliveryNotes: String? = null
 )
 
 @Serializable
 data class DeliveryItemDto(
-    val bookingId: String,
-    val customerName: String,
-    val startDate: String,
-    val projectLocation: String,
+    val bookingId: Long,
+    val customerName: String? = null,
+    val startDate: String? = null,
+    val siteAddress: String? = null,
     val assetName: String,
     val serialNumber: String,
-    val quantity: Int,
-    val bookingStatus: String
+    val deliveryNotes: String? = null,
+    val bookingStatus: String? = null
 )
 
 @Serializable
 data class ReturnItemDto(
-    val bookingId: String,
-    val customerName: String,
-    val endDate: String,
-    val projectLocation: String,
+    val bookingId: Long,
+    val customerName: String? = null,
+    val endDate: String? = null,
+    val siteAddress: String? = null,
     val assetName: String,
     val serialNumber: String,
-    val quantity: Int,
-    val bookingStatus: String
+    val deliveryNotes: String? = null,
+    val bookingStatus: String? = null
 )
 
 @Serializable
 data class StatusUpdateRequest(
     val bookingStatus: String
+)
+
+@Serializable
+data class BookingUpdateRequestDto(
+    val startDate: String,
+    val endDate: String,
+    val siteAddress: String,
+    val deliveryNotes: String
 )
