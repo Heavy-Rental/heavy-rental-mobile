@@ -29,6 +29,31 @@ Wire serialisation uses `newStatus.name` in `BookingRepository`.
 (`SPEC-entity-repository.md` §6.2) and the `BookingStatus` schema in
 [`heavyrental-openapi.yaml`](../api/heavyrental-openapi.yaml). All three must be changed together.
 
+### `null` is a seventh case
+
+The domain field is `BookingStatus?`, not `BookingStatus`. `Mappers.kt` yields `null` when the wire
+value is absent (`Booking.status` is a nullable column — `SPEC-entity-repository.md` §5.7) **or**
+unrecognised, rather than throwing and failing the entire response over one row.
+
+| Consumer | Behaviour on `null` |
+|---|---|
+| Seed derive (`toDeliveryItems` / `toReturnItems`) | Excluded — no equality match against `CONFIRMED`/`MOBILISED`/`COMPLETED` |
+| UI sub-filter **All** | **Shown** — `All` returns the list unfiltered |
+| UI sub-filters Confirmed / Mobilised / Completed | Excluded, same reason as the seed derive |
+| Home dashboard totals (`deliveries.size`) | **Counted** |
+| Home dashboard per-status counts | Not counted |
+| Card status badge | Grey **"Unknown"** — see [03-deliveries.md](../product/03-deliveries.md) **K3** |
+| Transition guards (below) | Rejected — `currentStatus == null` fails the precondition, so no API call and no local change |
+
+**Consequence worth knowing:** because the total counts a `null`-status row and the per-status counts
+don't, the dashboard total will not equal the sum of its parts whenever one is present (e.g. "5
+deliveries" alongside "2 confirmed / 2 mobilised"). Not a defect in itself — it follows from
+`null` being unclassifiable — but it is the visible symptom to look for.
+
+Adding a value to the enum here therefore changes behaviour from "renders as Unknown, counts toward
+the total, and matches no sub-filter" to "participates normally" — which is the intended way to
+adopt a new backend status.
+
 > **HR-78:** `PENDING_DEPOSIT`, `PENDING_CONFIRMED`, and `CANCELLED` were added to match the backend.
 > Backend seed data contains bookings in all six states, so `GET /api/bookings` can return any of
 > them — four of the six are display-only as far as this client is concerned.

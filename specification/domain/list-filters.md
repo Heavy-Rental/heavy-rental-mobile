@@ -9,21 +9,30 @@
 
 ## Core entity: Booking
 
-| Field | Type | Notes |
-|-------|------|--------|
-| `bookingId` | int64 | Backend `Booking.id` (identity column) — numeric since HR-78 |
-| `customerName` | string | Customer / site owner |
-| `startDate` | date (ISO-8601) | Hire / delivery start |
-| `endDate` | date (ISO-8601) | Hire / return end |
-| `bookingStatus` | enum | See [booking-status-machine.md](booking-status-machine.md) |
-| `siteAddress` | string | Address or site description |
-| `assetName` | string | Equipment description — **one asset only**, see [03-deliveries.md](../product/03-deliveries.md) known issues |
-| `serialNumber` | string | Model / serial label |
-| `deliveryNotes` | string | Free-text handling instructions for the driver |
+Domain field names below are the **client's own**, not the wire's. Where the two differ, the wire
+name is given in the last column and the translation happens in `network/dto/Mappers.kt` — nowhere
+else. See [ADR 001](../decisions/001-openapi-as-api-source.md) for why the two layers are separate.
 
-> **HR-78 rename.** `projectLocation` → `siteAddress` and `quantity` → `deliveryNotes` to match the
-> Spring `BookingResponse`. `quantity` has **no backend equivalent** and was dropped, not renamed —
-> see the multi-asset known issue in [03-deliveries.md](../product/03-deliveries.md).
+| Field | Type | Wire name (`BookingDto`) | Notes |
+|-------|------|--------------------------|--------|
+| `bookingId` | int64 | same | Backend `Booking.id` (identity column) — numeric since HR-78 |
+| `customerName` | string | same | Customer / site owner; nullable on the wire, `""` when absent |
+| `startDate` | date (ISO-8601) | same | Hire / delivery start; nullable on the wire |
+| `endDate` | date (ISO-8601) | same | Hire / return end; nullable on the wire |
+| `bookingStatus` | enum **or `null`** | same | `null` when absent or unrecognised — see [booking-status-machine.md](booking-status-machine.md) |
+| `projectLocation` | string | **`siteAddress`** | Address or site description; `""` when absent |
+| `assetName` | string | same | Equipment description — **one asset only**, see [03-deliveries.md](../product/03-deliveries.md) K1 |
+| `serialNumber` | string | same | Model / serial label |
+| `deliveryNotes` | string | same | Free-text handling instructions for the driver; `""` when absent |
+
+> **What HR-78 actually changed.** `bookingId` became numeric (`String` → `Long`), the status enum
+> gained its four non-workflow values, and `deliveryNotes` was **added**. `quantity` was **removed** —
+> it has no equivalent on the Spring `BookingResponse`, which carries one asset per booking; see
+> **K1**/**K2** in [03-deliveries.md](../product/03-deliveries.md).
+>
+> The branch initially renamed `projectLocation` → `siteAddress` in the domain layer too. That was
+> reverted before merge: the wire name stays `siteAddress`, the domain name stays `projectLocation`,
+> and `Mappers.kt` translates between them.
 
 Kotlin: `data class Booking` in `data/models/Bookings.kt`.  
 Wire: OpenAPI `Booking` / DTO `BookingDto`.
@@ -36,14 +45,14 @@ Wire: OpenAPI `Booking` / DTO `BookingDto`.
 
 Projection of a booking for the Deliveries screen (`data/models/Deliveries.kt`):
 
-- `bookingId`, `customerName`, `startDate`, `siteAddress`
+- `bookingId`, `customerName`, `startDate`, `projectLocation`
 - `assetName`, `serialNumber`, `deliveryNotes`, `bookingStatus`
 
 ### ReturnItem
 
 Projection of a booking for the Returns screen (`data/models/Returns.kt`):
 
-- `bookingId`, `customerName`, `endDate`, `siteAddress`
+- `bookingId`, `customerName`, `endDate`, `projectLocation`
 - `assetName`, `serialNumber`, `deliveryNotes`, `bookingStatus`
 
 ---

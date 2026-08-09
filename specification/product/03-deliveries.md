@@ -53,7 +53,7 @@ Each card exposes:
 | Asset name + serial number | Primary title lines — **one asset only**, see Known issues |
 | Delivery notes | Shown when `deliveryNotes` is non-blank, as `Note: {text}` |
 | Customer name | Person icon row |
-| Site address | Location icon row (`siteAddress`) |
+| Project location | Location icon row (`projectLocation`; wire field `siteAddress`) |
 | Open in Google Maps | `geo:` intent; prefers Google Maps package, else web maps URL |
 | Mark as Mobilised | Visible only when status is `CONFIRMED` |
 

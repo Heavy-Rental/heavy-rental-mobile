@@ -53,7 +53,7 @@ Each card exposes (aligned with delivery list pattern):
 | Asset name + serial number | Primary title lines — **one asset only**, see [03-deliveries.md](03-deliveries.md) K1 |
 | Delivery notes | Shown when `deliveryNotes` is non-blank, as `Note: {text}` |
 | Customer name | Person icon row |
-| Site address | Location icon row (`siteAddress`) |
+| Project location | Location icon row (`projectLocation`; wire field `siteAddress`) |
 | Open in Google Maps | Same geo / web fallback as deliveries |
 | Complete action | Visible only when status is `MOBILISED` |
 
