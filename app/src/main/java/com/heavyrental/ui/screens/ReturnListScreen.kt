@@ -197,7 +197,7 @@ private fun ReturnCard(
 
         InfoRow(icon = { Icon(Icons.Default.Person,     null, tint = MutedForeground, modifier = Modifier.size(15.dp)) }, text = item.customerName)
         Spacer(modifier = Modifier.height(4.dp))
-        InfoRow(icon = { Icon(Icons.Default.LocationOn, null, tint = MutedForeground, modifier = Modifier.size(15.dp)) }, text = item.siteAddress)
+        InfoRow(icon = { Icon(Icons.Default.LocationOn, null, tint = MutedForeground, modifier = Modifier.size(15.dp)) }, text = item.projectLocation)
         Spacer(modifier = Modifier.height(4.dp))
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -205,7 +205,7 @@ private fun ReturnCard(
         // Google Maps button
         OutlinedButton(
             onClick = {
-                val uri = Uri.parse("geo:0,0?q=${Uri.encode(item.siteAddress)}")
+                val uri = Uri.parse("geo:0,0?q=${Uri.encode(item.projectLocation)}")
                 val intent = Intent(Intent.ACTION_VIEW, uri).apply {
                     setPackage("com.google.android.apps.maps")
                 }
@@ -216,7 +216,7 @@ private fun ReturnCard(
                     // Fallback: open in browser
                     val fallback = Intent(
                         Intent.ACTION_VIEW,
-                        Uri.parse("https://maps.google.com/?q=${Uri.encode(item.siteAddress)}")
+                        Uri.parse("https://maps.google.com/?q=${Uri.encode(item.projectLocation)}")
                     )
                     context.startActivity(fallback)
                 }

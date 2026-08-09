@@ -6,11 +6,11 @@ data class DeliveryItem(
     val bookingId: Long,
     val customerName: String,
     val startDate: LocalDate,
-    val siteAddress: String,
+    val projectLocation: String,
 
     val assetName: String,
     val serialNumber: String,
     val deliveryNotes: String,
 
-    val bookingStatus: BookingStatus
+    val bookingStatus: BookingStatus?
 )

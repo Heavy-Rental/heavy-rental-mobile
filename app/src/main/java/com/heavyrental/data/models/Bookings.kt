@@ -8,8 +8,8 @@ data class Booking(
 
     val startDate: LocalDate,
     val endDate: LocalDate,
-    val bookingStatus: BookingStatus,
-    val siteAddress: String,
+    val bookingStatus: BookingStatus?,
+    val projectLocation: String,
 
     // Asset information
     val assetName: String,
@@ -23,7 +23,7 @@ fun Booking.toDeliveryItem(): DeliveryItem = DeliveryItem(
     bookingId = bookingId,
     customerName = customerName,
     startDate = startDate,
-    siteAddress = siteAddress,
+    projectLocation = projectLocation,
     assetName = assetName,
     serialNumber = serialNumber,
     deliveryNotes = deliveryNotes,
@@ -34,7 +34,7 @@ fun Booking.toReturnItem(): ReturnItem = ReturnItem(
     bookingId = bookingId,
     customerName = customerName,
     endDate = endDate,
-    siteAddress = siteAddress,
+    projectLocation = projectLocation,
     assetName = assetName,
     serialNumber = serialNumber,
     deliveryNotes = deliveryNotes,
@@ -50,4 +50,3 @@ fun List<Booking>.toDeliveryItems(): List<DeliveryItem> =
 fun List<Booking>.toReturnItems(): List<ReturnItem> =
     filter { it.endDate == LocalDate.now() && (it.bookingStatus == BookingStatus.MOBILISED || it.bookingStatus == BookingStatus.COMPLETED) }
         .map { it.toReturnItem() }
-

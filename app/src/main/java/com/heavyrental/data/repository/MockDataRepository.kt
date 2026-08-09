@@ -14,7 +14,7 @@ object MockDataRepository {
             assetName = "CAT 320 Hydraulic Excavator",
             serialNumber = "CAT 320 GC",
             deliveryNotes = "",
-            siteAddress = "18 Tuas South Ave 14, Singapore 637471",
+            projectLocation = "18 Tuas South Ave 14, Singapore 637471",
             startDate = today,
             endDate = today.plusDays(7),
             bookingStatus = BookingStatus.MOBILISED
@@ -25,7 +25,7 @@ object MockDataRepository {
             assetName = "Komatsu D65 Bulldozer",
             serialNumber = "D65EX-18",
             deliveryNotes = "",
-            siteAddress = "80 Tuas South Blvd, Singapore 637051",
+            projectLocation = "80 Tuas South Blvd, Singapore 637051",
             startDate = today,
             endDate = today.plusDays(7),
             bookingStatus = BookingStatus.MOBILISED
@@ -36,7 +36,7 @@ object MockDataRepository {
             assetName = "JLG 1350SJP Telescopic Boom",
             serialNumber = "1350SJP",
             deliveryNotes = "Two units on this booking — coordinate offload with site security",
-            siteAddress = "Jurong Port Road, Singapore 619110",
+            projectLocation = "Jurong Port Road, Singapore 619110",
             startDate = today,
             endDate = today.plusDays(7),
             bookingStatus = BookingStatus.CONFIRMED
@@ -47,7 +47,7 @@ object MockDataRepository {
             assetName = "JLG 1350SJP Telescopic Boom",
             serialNumber = "1350SJP",
             deliveryNotes = "",
-            siteAddress = "Jurong Port Road, Singapore 619110",
+            projectLocation = "Jurong Port Road, Singapore 619110",
             startDate = today,
             endDate = today.plusDays(7),
             bookingStatus = BookingStatus.CONFIRMED
@@ -58,7 +58,7 @@ object MockDataRepository {
             assetName = "Komatsu D65 Bulldozer",
             serialNumber = "D65EX-18",
             deliveryNotes = "",
-            siteAddress = "80 Tuas South Blvd, Singapore 637051",
+            projectLocation = "80 Tuas South Blvd, Singapore 637051",
             startDate = today,
             endDate = today.plusDays(7),
             bookingStatus = BookingStatus.MOBILISED
@@ -69,7 +69,7 @@ object MockDataRepository {
             assetName = "Volvo EC480E Excavator",
             serialNumber = "EC480E L",
             deliveryNotes = "",
-            siteAddress = "1 Woodlands Industrial Park E1, Singapore 757700",
+            projectLocation = "1 Woodlands Industrial Park E1, Singapore 757700",
             startDate = today,
             endDate = today.plusDays(7),
             bookingStatus = BookingStatus.CONFIRMED
@@ -80,7 +80,7 @@ object MockDataRepository {
             assetName = "Liebherr LTM 1100 Mobile Crane",
             serialNumber = "LTM 1100-5.2",
             deliveryNotes = "",
-            siteAddress = "1 Maritime Square, Harbourfront, Singapore 099253",
+            projectLocation = "1 Maritime Square, Harbourfront, Singapore 099253",
             startDate = today.minusDays(7),
             endDate = today,
             bookingStatus = BookingStatus.COMPLETED
@@ -91,7 +91,7 @@ object MockDataRepository {
             assetName = "Toyota 8FBE15 Electric Forklift",
             serialNumber = "8FBE15",
             deliveryNotes = "Airside access pass required — confirm with site ops before arrival",
-            siteAddress = "Airport Logistics Park, 11 Airport Cargo Road, Singapore 819466",
+            projectLocation = "Airport Logistics Park, 11 Airport Cargo Road, Singapore 819466",
             startDate = today.minusDays(7),
             endDate = today,
             bookingStatus = BookingStatus.MOBILISED
@@ -102,7 +102,7 @@ object MockDataRepository {
             assetName = "Toyota 8FBE15 Electric Forklift",
             serialNumber = "8FBE15",
             deliveryNotes = "",
-            siteAddress = "Airport Logistics Park, 11 Airport Cargo Road, Singapore 819466",
+            projectLocation = "Airport Logistics Park, 11 Airport Cargo Road, Singapore 819466",
             startDate = today.minusDays(7),
             endDate = today,
             bookingStatus = BookingStatus.MOBILISED
@@ -113,7 +113,7 @@ object MockDataRepository {
             assetName = "CAT 320 Hydraulic Excavator",
             serialNumber = "CAT 320 GC",
             deliveryNotes = "",
-            siteAddress = "5 Pandan Road, Singapore 609254",
+            projectLocation = "5 Pandan Road, Singapore 609254",
             startDate = today.minusDays(7),
             endDate = today,
             bookingStatus = BookingStatus.MOBILISED
