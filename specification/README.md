@@ -140,10 +140,12 @@ specification/
       deliveries.json
       returns.json
       status-update-request.json
+      return-status-update-request.json
       interim-token.txt
       login-response.json
       logout-response.json
   decisions/
     001-openapi-as-api-source.md
     002-mock-strategy.md
+    003-mock-echoes-return-notes.md
 ```

@@ -35,9 +35,11 @@ Product auth behaviour: [product/01-login.md](../product/01-login.md).
 | `GET` | `/api/deliveries` | Yes — Delivery List + home delivery counts |
 | `PATCH` | `/api/deliveries/{bookingId}/status` | Yes — mobilise |
 | `GET` | `/api/returns` | Yes — Return List + home return counts |
-| `PATCH` | `/api/returns/{bookingId}/status` | Yes — complete return |
+| `PATCH` | `/api/returns/{bookingId}/status` | Yes — complete return, `returnNotes` |
 
 **Mockoon auth caveat:** Auth routes return static canned bodies (no real JWT signing or password verification). Use a real backend to exercise 400/401/403 credential paths.
+
+**Mockoon return-notes caveat:** unlike every other Mockoon route, `PATCH /api/returns/{bookingId}/status` echoes the request body's `bookingStatus`/`returnNotes` back in its response (Mockoon templating) instead of a fixed value — see [ADR 003](../decisions/003-mock-echoes-return-notes.md). It still does not validate the body (no `400` for a missing `returnNotes`).
 
 ## Kotlin mapping
 
@@ -61,7 +63,8 @@ Product auth behaviour: [product/01-login.md](../product/01-login.md).
 | [`examples/bookings.json`](examples/bookings.json) | `GET /api/bookings` body |
 | [`examples/deliveries.json`](examples/deliveries.json) | `GET /api/deliveries` body |
 | [`examples/returns.json`](examples/returns.json) | `GET /api/returns` body |
-| [`examples/status-update-request.json`](examples/status-update-request.json) | PATCH status body sample |
+| [`examples/status-update-request.json`](examples/status-update-request.json) | `PATCH /api/deliveries/{bookingId}/status` body sample (no `returnNotes`) |
+| [`examples/return-status-update-request.json`](examples/return-status-update-request.json) | `PATCH /api/returns/{bookingId}/status` body sample (includes `returnNotes`) |
 
 **Note:** Example dates use a fixed calendar day (`2026-08-03`) for stable fixtures. The v1 app loads **list screens from `GET /api/deliveries` and `GET /api/returns`**, so those fixtures appear even when device “today” differs. In-app seed (`MockDataRepository`) still uses `LocalDate.now()` for offline fallback only.
 
@@ -103,3 +106,4 @@ Then open `mocks/mockoon/heavy-rental.environment.json` in the Mockoon app.
 
 - [001-openapi-as-api-source.md](../decisions/001-openapi-as-api-source.md)
 - [002-mock-strategy.md](../decisions/002-mock-strategy.md)
+- [003-mock-echoes-return-notes.md](../decisions/003-mock-echoes-return-notes.md)

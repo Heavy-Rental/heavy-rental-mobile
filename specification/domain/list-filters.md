@@ -53,7 +53,12 @@ Projection of a booking for the Deliveries screen (`data/models/Deliveries.kt`):
 Projection of a booking for the Returns screen (`data/models/Returns.kt`):
 
 - `bookingId`, `customerName`, `endDate`, `projectLocation`
-- `assetName`, `serialNumber`, `deliveryNotes`, `bookingStatus`
+- `assetName`, `serialNumber`, `deliveryNotes`, `returnNotes`, `bookingStatus`
+
+`returnNotes` is return-view-only (not part of `Booking`/`DeliveryItem`) — operator-entered on
+completion (`MOBILISED` → `COMPLETED`), empty/blank until then. See
+[booking-status-machine.md](booking-status-machine.md) and
+[product/04-returns.md](../product/04-returns.md).
 
 ---
 
