@@ -32,7 +32,7 @@ private enum class ReturnFilter { ALL, MOBILISED, COMPLETED }
 @Composable
 fun ReturnListScreen(
     returns: List<ReturnItem>,
-    onStatusUpdate: (id: Long) -> Unit,
+    onStatusUpdate: (id: Long, returnNotes: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var selectedFilter by remember { mutableStateOf(ReturnFilter.ALL) }
@@ -116,10 +116,13 @@ fun ReturnListScreen(
 @Composable
 private fun ReturnCard(
     item: ReturnItem,
-    onStatusUpdate: (id: Long) -> Unit
+    onStatusUpdate: (id: Long, returnNotes: String) -> Unit
 ) {
     val context = LocalContext.current
     var showConfirmDialog by remember { mutableStateOf(false) }
+    // Draft note the driver is typing before confirming completion. Keyed on bookingId so it
+    // resets correctly if the underlying list recomposes with a different item at this slot.
+    var returnNoteInput by remember(item.bookingId) { mutableStateOf(item.returnNotes) }
 
     val (statusColor, statusLabel) = when (item.bookingStatus) {
         BookingStatus.MOBILISED -> Pair(BlueAccent,  "Mobilised")
@@ -143,7 +146,7 @@ private fun ReturnCard(
             confirmButton = {
                 Button(
                     onClick = {
-                        onStatusUpdate(item.bookingId)
+                        onStatusUpdate(item.bookingId, returnNoteInput.trim())
                         showConfirmDialog = false
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = GreenAccent)
@@ -178,15 +181,36 @@ private fun ReturnCard(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Text(item.assetName, style = MaterialTheme.typography.titleLarge, color = Foreground)
-        Text(item.serialNumber, style = MaterialTheme.typography.bodySmall, color = MutedForeground)
+        Text(
+            item.assetName.ifBlank { "Asset not specified" },
+            style = MaterialTheme.typography.titleLarge,
+            color = if (item.assetName.isBlank()) MutedForeground else Foreground
+        )
+        Text(
+            item.serialNumber.ifBlank { "No serial number" },
+            style = MaterialTheme.typography.bodySmall,
+            color = MutedForeground
+        )
 
+        // Delivery-time note, kept for context (e.g. "airside access pass required").
         if (item.deliveryNotes.isNotBlank()) {
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                "Note: ${item.deliveryNotes}",
+                "Delivery note: ${item.deliveryNotes}",
                 style = MaterialTheme.typography.bodySmall,
                 color = BlueAccent,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        // Return-time note, only meaningful once one has actually been recorded (i.e. after
+        // completion) — the editable draft while MOBILISED lives in the text field below.
+        if (item.bookingStatus == BookingStatus.COMPLETED && item.returnNotes.isNotBlank()) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                "Return note: ${item.returnNotes}",
+                style = MaterialTheme.typography.bodySmall,
+                color = GreenAccent,
                 fontWeight = FontWeight.SemiBold
             )
         }
@@ -231,8 +255,21 @@ private fun ReturnCard(
             Text("Open in Google Maps", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
         }
 
-        // Status update button — only visible when status is MOBILISED
+        // Return note input + status update button — only visible when status is MOBILISED
         if (item.bookingStatus == BookingStatus.MOBILISED) {
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = returnNoteInput,
+                onValueChange = { returnNoteInput = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Return note (optional)") },
+                placeholder = { Text("e.g. condition on collection, missing parts") },
+                minLines = 2,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = GreenAccent,
+                    focusedLabelColor = GreenAccent
+                )
+            )
             Spacer(modifier = Modifier.height(8.dp))
             Button(
                 onClick = { showConfirmDialog = true },

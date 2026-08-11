@@ -103,13 +103,17 @@ preconditions:
   - booking exists with bookingId
   - booking.bookingStatus == MOBILISED
   - requested newStatus == COMPLETED
+  - returnNotes: String — whatever is in the return note field, may be blank
 effect:
-  - attempt API PATCH /api/returns/{bookingId}/status
+  - attempt API PATCH /api/returns/{bookingId}/status with { bookingStatus, returnNotes }
   - booking.bookingStatus = COMPLETED (local, even if PATCH failed)  ← see open question below
+  - booking.returnNotes = returnNotes (local, same conditions as the status change above)
   - refresh derived delivery/return lists
 ```
 
-Shared implementation: `AppViewModel.updateBookingStatus(id, expectedCurrent, expectedNew, newStatus, apiCall)`.
+Shared implementation: `AppViewModel.updateBookingStatus(id, expectedCurrent, expectedNew, newStatus, returnNotes, apiCall)`.
+`returnNotes` is `null` for the delivery path (`updateDeliveryStatus` never passes one) and is only
+ever applied to the `_returns` list, never to deliveries or bookings.
 
 ### Open question — client guards vs. server guards (undecided)
 
@@ -158,7 +162,7 @@ A booking can appear on **both** lists only if `startDate` and `endDate` are bot
 
 ## Request payload
 
-Status updates send:
+Deliveries send only a status change:
 
 ```json
 {
@@ -166,16 +170,24 @@ Status updates send:
 }
 ```
 
-or
+Schema: API `StatusUpdateRequest` in `specification/api/heavyrental-openapi.yaml`.  
+DTO: `network/dto/BookingDtos.kt` — `StatusUpdateRequest`.
+
+Returns send a status change **and** a return note (may be an empty string — there is no way to
+omit the field, unlike `deliveryNotes` elsewhere, which is nullable):
 
 ```json
 {
-  "bookingStatus": "COMPLETED"
+  "bookingStatus": "COMPLETED",
+  "returnNotes": "Returned in good condition"
 }
 ```
 
-Schema: API `StatusUpdateRequest` in `specification/api/heavyrental-openapi.yaml`.  
-DTO: `network/dto/BookingDtos.kt` — `StatusUpdateRequest`.
+This is a **separate schema from deliveries**, not `StatusUpdateRequest` plus an extra field —
+deliveries has no use for a notes field, so sharing the type would mean it silently accepts one it
+ignores.  
+Schema: API `ReturnStatusUpdateRequest` in `specification/api/heavyrental-openapi.yaml`.  
+DTO: `network/dto/BookingDtos.kt` — `ReturnStatusUpdateRequestDto`.
 
 ---
 
@@ -185,7 +197,7 @@ DTO: `network/dto/BookingDtos.kt` — `StatusUpdateRequest`.
 |---|---------|-----------|--------|
 | 1 | `CONFIRMED` | `MOBILISED` | Accept → `MOBILISED` |
 | 2 | `CONFIRMED` | `COMPLETED` | Reject (no change) |
-| 3 | `MOBILISED` | `COMPLETED` | Accept → `COMPLETED` |
+| 3 | `MOBILISED` | `COMPLETED` | Accept → `COMPLETED`, `returnNotes` applied |
 | 4 | `MOBILISED` | `CONFIRMED` | Reject |
 | 5 | `COMPLETED` | `MOBILISED` | Reject |
 | 6 | missing id | any | Reject |

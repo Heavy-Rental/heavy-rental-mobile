@@ -9,7 +9,7 @@
 
 ## Summary
 
-Operators manage **equipment returns due today**. They can filter the list, open the project location on a map, and mark a **mobilised** booking as **completed** when the asset has been returned.
+Operators manage **equipment returns due today**. They can filter the list, open the project location on a map, and mark a **mobilised** booking as **completed** when the asset has been returned. Completing a return can optionally include a **return note**, entered by the operator, in addition to the delivery note already on the booking.
 
 ---
 
@@ -51,7 +51,9 @@ Each card exposes (aligned with delivery list pattern):
 | Booking id | Prefixed as `ID: {bookingId}` |
 | Status badge | Mobilised / Completed |
 | Asset name + serial number | Primary title lines — **one asset only**, see [03-deliveries.md](03-deliveries.md) K1 |
-| Delivery notes | Shown when `deliveryNotes` is non-blank, as `Note: {text}` |
+| Delivery notes | Shown when `deliveryNotes` is non-blank, as `Delivery note: {text}` — kept for context (e.g. access instructions from drop-off) alongside the return note, not replaced by it |
+| Return note input | Editable text field, visible only while status is `MOBILISED`; defaults to the booking's existing `returnNotes` if any |
+| Return note (recorded) | Shown once status is `COMPLETED` and `returnNotes` is non-blank, as `Return note: {text}` |
 | Customer name | Person icon row |
 | Project location | Location icon row (`projectLocation`; wire field `siteAddress`) |
 | Open in Google Maps | Same geo / web fallback as deliveries |
@@ -61,8 +63,8 @@ Each card exposes (aligned with delivery list pattern):
 
 Completing a return requires confirmation (same pattern as mobilise):
 
-- Confirm applies `MOBILISED` → `COMPLETED`
-- Cancel dismisses without change
+- Confirm applies `MOBILISED` → `COMPLETED` and submits whatever is in the return note field (may be blank)
+- Cancel dismisses without change, including any note typed but not yet confirmed
 
 ---
 
@@ -79,7 +81,15 @@ Feature: Returns
     Then the return item status becomes COMPLETED
     And the in-memory returns list is updated for that bookingId
     And the app attempts PATCH /api/returns/{bookingId}/status
-    And the request body includes bookingStatus "COMPLETED"
+    And the request body includes bookingStatus "COMPLETED" and returnNotes
+
+  Scenario: Operator records a return note on completion
+    Given a return item with bookingId 8 and status MOBILISED
+    When the operator types a note into the return note field
+    And confirms completion
+    Then the request body's returnNotes contains what was typed
+    And the return item's returnNotes is updated locally on success
+    And the card shows "Return note: {text}" once status is COMPLETED
 
   Scenario: Invalid return transitions are ignored
     Given a return item with status COMPLETED
@@ -118,9 +128,9 @@ Offline behaviour: [product/05-offline-fallback.md](05-offline-fallback.md).
 | Load list | **`GET /api/returns`** → map each `ReturnItem` DTO to domain `ReturnItem` |
 | Display | Use the API payload as the Return List (server/mock already applies “today’s returns” membership) |
 | UI chips | Client-side only: All / Mobilised / Completed on the loaded list |
-| Seed / offline | Until the list API succeeds (or if it fails), seed from `MockDataRepository` via `toReturnItems()` — see [05-offline-fallback.md](05-offline-fallback.md) |
+| Seed / offline | Until the list API succeeds (or if it fails), seed from `MockDataRepository` via `toReturnItems()` — see [05-offline-fallback.md](05-offline-fallback.md); seed rows have `returnNotes = ""` since a booking has no return note until one is recorded |
 | Bookings | `GET /api/bookings` may still load for shared booking state; **must not** replace the return list by re-filtering bookings with device “today” |
-| Update | `PATCH /api/returns/{bookingId}/status` with `{ "bookingStatus": "COMPLETED" }` |
+| Update | `PATCH /api/returns/{bookingId}/status` with `{ "bookingStatus": "COMPLETED", "returnNotes": "..." }` — a dedicated request schema (`ReturnStatusUpdateRequest`), separate from deliveries' `StatusUpdateRequest`, since deliveries has no notes field |
 
 ```gherkin
   Scenario: Return list loads from the returns endpoint
@@ -164,6 +174,7 @@ still on site, with nothing on the card indicating it exists.
 - Late fees or overhire calculation
 - Partial returns
 - Changing `endDate`
+- Editing a `returnNotes` value after completion (one-shot, entered at the point of completing)
 
 ---
 
@@ -171,9 +182,9 @@ still on site, with nothing on the card indicating it exists.
 
 | Concern | Location |
 |---------|----------|
-| UI + filters + maps | `ui/screens/ReturnListScreen.kt` |
+| UI + filters + maps + return note input | `ui/screens/ReturnListScreen.kt` |
 | Load + transition | `viewmodel/AppViewModel.kt` — `loadData` / `updateReturnStatus` |
 | API | `data/repository/BookingRepository.kt` — `getTodaysReturns`, `updateReturnStatus` |
-| Paths | `network/dto/HeavyRentalApiService.kt` — `GET api/returns` |
+| Paths | `network/dto/HeavyRentalApiService.kt` — `PATCH api/returns/{bookingId}/status` (`ReturnStatusUpdateRequestDto`) |
 | DTO map | `network/dto/Mappers.kt` — `ReturnItemDto.toReturnItem()` |
 | Seed derive only | `data/models/Bookings.kt` — `List<Booking>.toReturnItems()` |

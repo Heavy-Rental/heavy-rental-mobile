@@ -7,6 +7,7 @@
     "assetName": "Liebherr LTM 1100 Mobile Crane",
     "serialNumber": "LTM 1100-5.2",
     "deliveryNotes": "",
+    "returnNotes": "Returned in good condition",
     "bookingStatus": "COMPLETED"
   },
   {
@@ -17,6 +18,7 @@
     "assetName": "Toyota 8FBE15 Electric Forklift",
     "serialNumber": "8FBE15",
     "deliveryNotes": "Airside access pass required — confirm with site ops before arrival",
+    "returnNotes": "",
     "bookingStatus": "MOBILISED"
   },
   {
@@ -27,6 +29,7 @@
     "assetName": "Toyota 8FBE15 Electric Forklift",
     "serialNumber": "8FBE15",
     "deliveryNotes": "",
+    "returnNotes": "",
     "bookingStatus": "MOBILISED"
   },
   {
@@ -37,6 +40,7 @@
     "assetName": "CAT 320 Hydraulic Excavator",
     "serialNumber": "CAT 320 GC",
     "deliveryNotes": "",
+    "returnNotes": "",
     "bookingStatus": "MOBILISED"
   }
 ]

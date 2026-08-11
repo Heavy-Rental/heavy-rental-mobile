@@ -334,6 +334,16 @@ function main() {
     ...returns.find((r) => r.bookingStatus === "MOBILISED") ?? returns[0],
     bookingStatus: "COMPLETED",
   };
+  // Mockoon-only fixture (ADR 003): the return-status route echoes whatever bookingStatus/
+  // returnNotes was actually PATCHed, via Mockoon's {{body 'path' 'default'}} templating helper,
+  // so manual/QA testing of the return note round-trips through the mock instead of always
+  // showing a canned value. Kept separate from `returnItem` above, which stays a realistic static
+  // value for the OpenAPI bundled example (Prism/docs) — that templating syntax means nothing there.
+  const returnItemMockoonFixture = {
+    ...returnItem,
+    bookingStatus: "{{body 'bookingStatus' 'COMPLETED'}}",
+    returnNotes: "{{body 'returnNotes' ''}}",
+  };
 
   const bookingItemPath = path.join(generatedDir, "booking-item.json");
   const deliveryItemPath = path.join(generatedDir, "delivery-item.json");
@@ -341,7 +351,7 @@ function main() {
 
   writeJson(bookingItemPath, bookingItem);
   writeJson(deliveryItemPath, deliveryItem);
-  writeJson(returnItemPath, returnItem);
+  writeJson(returnItemPath, returnItemMockoonFixture);
 
   // Mockoon FILE paths are relative to the environment file directory
   const mockoonPaths = {
