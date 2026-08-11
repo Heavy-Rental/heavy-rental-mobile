@@ -8,7 +8,7 @@
 
 ## Summary
 
-The mobile app must remain **usable for demos and field work** when the backend or mock server is unreachable **after** the operator has authenticated. Failures are visible, but core status changes still apply **locally**.
+The mobile app must remain **usable for demos and field work** when the backend or mock server is unreachable **after** the operator has authenticated. Failures are visible, but core status changes still apply **locally** — except when the server has explicitly rejected the request (see Principle 3, updated HR-93).
 
 **Boundary:** this feature covers **bookings load** and **status PATCH** fallback. **Login** requires a reachable auth API and surfaces errors on the login screen (`loginError`), not the shell banner. See [01-login.md](01-login.md).
 
@@ -18,7 +18,10 @@ The mobile app must remain **usable for demos and field work** when the backend 
 
 1. **Never blank the main lists** because the network failed.
 2. **Always surface** a human-readable error when list/status API sync fails.
-3. **Optimistic domain updates** for allowed status transitions: update local state even if PATCH fails.
+3. **Status update local state depends on failure type (HR-93):** applied optimistically only when
+   the API is genuinely unreachable (`IOException`); withheld when the server explicitly rejects the
+   request (`HttpException`, e.g. `400`/`403`) or on any unrecognised failure, both treated
+   conservatively as "no change." See **O1** below — resolved.
 4. **Mock seed** provides initial booking data so the UI has content before the first successful API response (and when load fails).
 5. **Login is not offline** — entry requires a successful interim → access handshake against Mockoon/Prism/Spring.
 
@@ -67,28 +70,48 @@ Could not reach API — showing mock data. ({exception message})
 ### Status updates
 
 ```gherkin
-  Scenario: Status PATCH fails but local transition applies
-    Given an allowed status transition (e.g. CONFIRMED → MOBILISED)
-    When the operator confirms the action
-    And the corresponding PATCH fails
-    Then the local booking status still updates
-    And derived lists refresh
-    And networkError explains that the update was local only
-
   Scenario: Status PATCH succeeds
     Given an allowed status transition
     When the PATCH succeeds
     Then local status updates
     And networkError is cleared
+
+  Scenario: Status PATCH fails with no response reached — local transition still applies (HR-93)
+    Given an allowed status transition (e.g. CONFIRMED → MOBILISED)
+    When the operator confirms the action
+    And the PATCH call throws IOException (host unreachable, no response received at all)
+    Then the local booking status still updates
+    And derived lists refresh
+    And networkError reads "Could not reach API — updated locally only. ({message})"
+
+  Scenario: Status PATCH is explicitly rejected by the server — no local change (HR-93)
+    Given an allowed status transition per the client's own guards
+    When the operator confirms the action
+    And the server responds with a non-2xx status (HttpException — e.g. 400 invalid transition, 403 unauthorised)
+    Then the local booking status does NOT change
+    And networkError reads "Update rejected by server ({code}) — status unchanged."
+
+  Scenario: Status PATCH fails with an unrecognised error — no local change (HR-93)
+    Given an allowed status transition
+    When the operator confirms the action
+    And the PATCH call throws an exception that is neither HttpException nor IOException
+    Then the local booking status does NOT change, treated conservatively as a rejection
+    And networkError reads "Could not sync status update — status unchanged. ({message})"
 ```
 
-**Error copy (status)** — set in `AppViewModel.updateBookingStatus`:
+**Error copy (status)** — set in `AppViewModel.updateBookingStatus`, one of three depending on
+failure type (HR-93):
 
 ```text
-Could not sync status update to API — updated locally only. ({exception message})
+Update rejected by server ({code}) — status unchanged.                    // HttpException
+Could not reach API — updated locally only. ({exception message})         // IOException
+Could not sync status update — status unchanged. ({exception message})    // any other Exception
 ```
 
-**Ordering note (v1):** local state is updated **after** the API attempt completes (success or failure). The UI still ends in the new status either way; there is no rollback on failure.
+**Ordering note (v1, updated HR-93):** local state is updated **after** the API attempt completes,
+and only on success or `IOException` — never after an `HttpException` or an unrecognised exception,
+both of which leave state unchanged. Still no rollback: once local state is applied there is no
+reconciliation against a later authoritative response, other than the next successful `loadData()`.
 
 ### Disallowed transitions
 
@@ -151,41 +174,50 @@ Mock servers: [`mocks/README.md`](../../mocks/README.md) and [api/README.md](../
 ## Open questions raised by HR-78
 
 HR-78 changed the default backend from Mockoon to Spring Boot. Two v1 principles in this document
-were written against a mock that cannot fail in these ways, and their behaviour has inverted now
-that a real backend is on the other end. **Neither is decided here** — both are recorded so the
-decision is made deliberately rather than by default.
+were written against a mock that cannot fail in these ways, and their behaviour had inverted once a
+real backend was on the other end. **O1 is now resolved (HR-93)**; O2 and O3 remain open and are
+recorded here so their decisions are made deliberately rather than by default.
 
-### O1 — Optimistic status updates vs. server-enforced transitions *(ticket: TBD)*
+### O1 — Optimistic status updates vs. server-enforced transitions — RESOLVED (HR-93)
 
-**Current specified behaviour:** Principle 3 above, and the "Ordering note (v1)" — local state is
-updated after the API attempt regardless of outcome, with no rollback. Mirrored in
-[domain/booking-status-machine.md](../domain/booking-status-machine.md) transition guards, and
-implemented in `AppViewModel.updateBookingStatus`. The code matches the spec exactly.
+**Decision:** split by failure type, implemented in `AppViewModel.updateBookingStatus`.
 
-**Why it was written that way:** Mockoon returns `200` to any request and cannot reject a
-transition, so the client's own preconditions were the only guard in existence. Applying locally
-after a failed PATCH could only ever mean "the network was down", never "the server said no" — and
-keeping the app usable in the field was the point of this feature.
+- `HttpException` (server explicitly responded — e.g. `400` invalid transition, `403`
+  unauthorised): local state is **not** changed. `networkError` reads
+  `"Update rejected by server ({code}) — status unchanged."`
+- `IOException` (no response reached the client — genuinely unreachable): local state **is**
+  applied optimistically, preserving offline field use. `networkError` reads
+  `"Could not reach API — updated locally only. ({message})"`
+- Any other `Exception` (unrecognised failure shape): treated conservatively like a rejection —
+  local state is **not** changed. `networkError` reads
+  `"Could not sync status update — status unchanged. ({message})"`
+
+Mirrored in [domain/booking-status-machine.md](../domain/booking-status-machine.md) transition
+guards. Principle 3 and the "Ordering note" above reflect this decision.
+
+**Why it was written the old way originally:** Mockoon returns `200` to any request and cannot
+reject a transition, so the client's own preconditions were the only guard in existence. Applying
+locally after a failed PATCH could only ever mean "the network was down", never "the server said
+no" — and keeping the app usable in the field was the point of this feature.
 
 **What changed:** the Spring backend enforces the same two transitions server-side and returns
-`400` on anything else (`SPEC-booking-delivery-return-api.md` §4, Requirements 4.2 and 6). A
-rejected transition now still ends in the new status on screen. Two consequences:
+`400` on anything else (`SPEC-booking-delivery-return-api.md` §4, Requirements 4.2 and 6), and
+`ROLE_DRIVER` is excluded from every protected route today (`SPEC-api-index.md` §4), so a driver's
+status update returns `403`. Both are now `HttpException`s and are correctly rejected rather than
+silently applied as they were pre-HR-93.
 
-1. **Verification.** Any test of an invalid transition passes visually regardless of what the server
-   did, so the state machine cannot currently be validated end-to-end through the app.
-2. **Authorisation.** `ROLE_DRIVER` is excluded from every protected route today
-   (`SPEC-api-index.md` §4), so a driver's status update returns `403` — and shows as success.
+**Residual gap — depends on O2:** the split is by exception type, not by HTTP status code, so a
+driver's `403` and a genuine `400` invalid-transition both read as "rejected by server" with only
+the `{code}` differing in the message. Tailored copy per status code is O2's remaining scope, not
+re-opened here.
 
-**Options, unweighted:**
+**Options that were considered (kept for record):**
 
 | Option | Effect |
 |--------|--------|
-| Keep as specified | Offline field use preserved; invalid transitions and `403`s remain invisible |
+| Keep as specified (pre-HR-93) | Offline field use preserved; invalid transitions and `403`s remained invisible |
 | Server-authoritative | Local state changes only on a successful PATCH; load fallback (seed data) unaffected |
-| Split by failure type | Apply locally on `IOException` (genuinely offline), reject on `HttpException` (server said no) — depends on **O2** |
-
-**Decision owner:** product + tech lead. Until it is made, invalid-transition test results should be
-recorded as `NOT VERIFIED`, not `PASS`.
+| **Split by failure type — chosen (HR-93)** | Apply locally on `IOException` (genuinely offline), reject on `HttpException` (server said no) |
 
 ### O2 — All failures report as connectivity failures *(ticket: TBD)*
 
@@ -200,8 +232,15 @@ copy — the same pattern applied to `loadData()` would resolve this.
 **Note:** the error copy specified in this document is only correct for the `IOException` case.
 Whatever wording replaces it for HTTP failures should be added here in the same change.
 
+**Note (HR-93):** `updateBookingStatus` now distinguishes `HttpException` from `IOException`
+(see O1, resolved) but still does not distinguish HTTP status codes from one another within the
+`HttpException` branch — a `403` and a `400` both read as "Update rejected by server ({code})."
+`loadData()` is unaffected by HR-93 and still catches bare `Exception` as described above.
+
 **Status:** pre-existing (present on `develop` before HR-78); surfaced by the switch to a real
-backend. Prerequisite for the third option under **O1**.
+backend. Was the prerequisite for O1's "split by failure type" option, which is now implemented;
+remaining scope is per-status-code copy, in both `loadData()` and the `HttpException` branch of
+`updateBookingStatus`.
 
 ### O3 — `GET /api/bookings` has no observable effect *(ticket: TBD)*
 
@@ -222,16 +261,16 @@ that step as not mobile-testable — but decide, rather than leaving it ambiguou
 consumer (a booking detail screen is already unbuilt — `PUT`/`GET`-by-id exist in
 `HeavyRentalApiService` with no repository method or UI behind them).
 
-**Status:** pre-existing on `develop`, not a regression from HR-78.
+**Status:** pre-existing on `develop`, not a regression from HR-78. Untouched by HR-93.
 
 ---
 
 ## Out of scope (v1)
 
-- Persistent offline queue / retry when back online  
-- Conflict resolution if server status diverges  
-- Full offline database (Room)  
-- Airplane-mode specific UX beyond the banner  
+- Persistent offline queue / retry when back online
+- Conflict resolution if server status diverges
+- Full offline database (Room)
+- Airplane-mode specific UX beyond the banner
 - Manual "retry" control (re-entry / relaunch triggers load again)
 
 ---
@@ -242,5 +281,5 @@ consumer (a booking detail screen is already unbuilt — `PUT`/`GET`-by-id exist
 |---------|----------|
 | Seed | `data/repository/MockDataRepository.kt` — `bookingList` |
 | Load fallback | `viewmodel/AppViewModel.kt` — `loadData` |
-| Status fallback | `viewmodel/AppViewModel.kt` — `updateBookingStatus` |
+| Status fallback (split by failure type, HR-93) | `viewmodel/AppViewModel.kt` — `updateBookingStatus` |
 | Banner | `MainActivity.kt` — `HeavyRentalApp` when `networkError != null` |
