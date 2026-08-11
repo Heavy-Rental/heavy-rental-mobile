@@ -7,6 +7,7 @@ import com.heavyrental.network.dto.LoginRequest
 import com.heavyrental.network.dto.LoginResponse
 import com.heavyrental.network.dto.MessageResponse
 import com.heavyrental.network.dto.ReturnItemDto
+import com.heavyrental.network.dto.ReturnStatusUpdateRequestDto
 import com.heavyrental.network.dto.StatusUpdateRequest
 import okhttp3.ResponseBody
 import retrofit2.http.Body
@@ -66,6 +67,6 @@ interface HeavyRentalApiService {
     @PATCH("api/returns/{bookingId}/status")
     suspend fun updateReturnStatus(
         @Path("bookingId") bookingId: Long,
-        @Body request: StatusUpdateRequest
+        @Body request: ReturnStatusUpdateRequestDto
     ): ReturnItemDto
 }

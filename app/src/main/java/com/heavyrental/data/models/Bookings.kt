@@ -38,6 +38,7 @@ fun Booking.toReturnItem(): ReturnItem = ReturnItem(
     assetName = assetName,
     serialNumber = serialNumber,
     deliveryNotes = deliveryNotes,
+    returnNotes = "",
     bookingStatus = bookingStatus
 )
 

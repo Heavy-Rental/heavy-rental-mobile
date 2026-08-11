@@ -11,6 +11,7 @@ data class ReturnItem(
     val assetName: String,
     val serialNumber: String,
     val deliveryNotes: String,
+    val returnNotes: String,
 
     val bookingStatus: BookingStatus?
 )

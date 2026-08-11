@@ -8,6 +8,7 @@ import com.heavyrental.network.RetrofitInstance
 import com.heavyrental.network.toBooking
 import com.heavyrental.network.toDeliveryItem
 import com.heavyrental.network.toReturnItem
+import com.heavyrental.network.dto.ReturnStatusUpdateRequestDto
 import com.heavyrental.network.dto.StatusUpdateRequest
 
 class BookingRepository {
@@ -20,8 +21,11 @@ class BookingRepository {
     }
 
     // PATCH /api/returns/{bookingId}/status — e.g. MOBILISED → COMPLETED
-    suspend fun updateReturnStatus(bookingId: Long, newStatus: BookingStatus) {
-        api.updateReturnStatus(bookingId, StatusUpdateRequest(bookingStatus = newStatus.name))
+    suspend fun updateReturnStatus(bookingId: Long, newStatus: BookingStatus, returnNotes: String) {
+        api.updateReturnStatus(
+            bookingId,
+            ReturnStatusUpdateRequestDto(bookingStatus = newStatus.name, returnNotes = returnNotes)
+        )
     }
 
     suspend fun getBookings(): List<Booking> =

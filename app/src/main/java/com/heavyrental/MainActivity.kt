@@ -52,6 +52,8 @@ fun HeavyRentalApp() {
     val returns    by vm.returns.collectAsState()
     val networkError by vm.networkError.collectAsState()
 
+    // Re-fetch whenever login state flips to true (covers first login AND
+    // any later re-login after logout) -- not just once at process start.
     LaunchedEffect(state.isLoggedIn) {
         if (state.isLoggedIn) {
             vm.loadData()
@@ -128,7 +130,7 @@ fun HeavyRentalApp() {
             )
             AppScreen.RETURNS -> ReturnListScreen(
                 returns        = returns,
-                onStatusUpdate = { id -> vm.updateReturnStatus(id, BookingStatus.COMPLETED) },
+                onStatusUpdate = { id, notes -> vm.updateReturnStatus(id, BookingStatus.COMPLETED, notes) },
                 modifier       = Modifier.padding(innerPadding)
             )
             AppScreen.LOGIN -> { /* unreachable */ }
@@ -140,7 +142,6 @@ fun HeavyRentalApp() {
 private fun tabColors() = NavigationBarItemDefaults.colors(
     selectedIconColor   = Primary,
     selectedTextColor   = Primary,
-    indicatorColor      = Primary.copy(alpha = 0.15f),
     unselectedIconColor = MutedForeground,
     unselectedTextColor = MutedForeground
 )

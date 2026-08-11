@@ -40,5 +40,6 @@ fun ReturnItemDto.toReturnItem(): ReturnItem = ReturnItem(
     assetName = assetName,
     serialNumber = serialNumber,
     deliveryNotes = deliveryNotes.orEmpty(),
+    returnNotes = returnNotes.orEmpty(),
     bookingStatus = bookingStatus?.let { runCatching { BookingStatus.valueOf(it) }.getOrNull() }
 )

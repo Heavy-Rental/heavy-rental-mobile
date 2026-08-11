@@ -36,12 +36,19 @@ data class ReturnItemDto(
     val assetName: String,
     val serialNumber: String,
     val deliveryNotes: String? = null,
+    val returnNotes: String? = null,
     val bookingStatus: String? = null
 )
 
 @Serializable
 data class StatusUpdateRequest(
     val bookingStatus: String
+)
+
+@Serializable
+data class ReturnStatusUpdateRequestDto(
+    val bookingStatus: String,
+    val returnNotes: String
 )
 
 @Serializable
