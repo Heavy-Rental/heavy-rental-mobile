@@ -121,14 +121,15 @@ class AppViewModel : ViewModel() {
     }
 
     // Mobilised → Completed only. Silently ignored for any other transition.
-    fun updateReturnStatus(id: Long, newStatus: BookingStatus) {
+    fun updateReturnStatus(id: Long, newStatus: BookingStatus, returnNotes: String) {
         updateBookingStatus(
             id,
             BookingStatus.MOBILISED,
             BookingStatus.COMPLETED,
-            newStatus
+            newStatus,
+            returnNotes = returnNotes
         ) {
-            bookingRepository.updateReturnStatus(id, newStatus)
+            bookingRepository.updateReturnStatus(id, newStatus, returnNotes)
         }
     }
 
@@ -137,6 +138,7 @@ class AppViewModel : ViewModel() {
         expectedCurrent: BookingStatus,
         expectedNew: BookingStatus,
         newStatus: BookingStatus,
+        returnNotes: String? = null,
         apiCall: suspend () -> Unit
     ) {
         if (newStatus != expectedNew) return
@@ -193,7 +195,10 @@ class AppViewModel : ViewModel() {
 
             _returns.value = _returns.value.map { item ->
                 if (item.bookingId == id && item.bookingStatus == expectedCurrent) {
-                    item.copy(bookingStatus = newStatus)
+                    item.copy(
+                        bookingStatus = newStatus,
+                        returnNotes = returnNotes ?: item.returnNotes
+                    )
                 } else {
                     item
                 }

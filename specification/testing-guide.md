@@ -237,15 +237,18 @@ Product transition: `CONFIRMED` → `MOBILISED` — [product/03-deliveries.md](p
 | Method | `PATCH` |
 | URL | `{{baseUrl}}/api/returns/8/status` (numeric `bookingId` since HR-78) |
 | Header | `Content-Type: application/json` |
-| Body | |
+| Body | see below — [`examples/return-status-update-request.json`](api/examples/return-status-update-request.json) |
 
 ```json
 {
-  "bookingStatus": "COMPLETED"
+  "bookingStatus": "COMPLETED",
+  "returnNotes": "Returned in good condition"
 }
 ```
 
-**Expect:** `200`. Product: [product/04-returns.md](product/04-returns.md).
+**Expect:** `200`. Unlike other PATCH routes, the response **echoes back** the `returnNotes` (and
+`bookingStatus`) you sent instead of a fixed value — try changing the note and re-sending to confirm
+([ADR 003](decisions/003-mock-echoes-return-notes.md)). Product: [product/04-returns.md](product/04-returns.md).
 
 ---
 
@@ -425,4 +428,5 @@ Use this as a short QA pass:
 | [product/04-returns.md](product/04-returns.md) | Return List + complete |
 | [product/05-offline-fallback.md](product/05-offline-fallback.md) | Seed + error banner |
 | [decisions/002-mock-strategy.md](decisions/002-mock-strategy.md) | Why Mockoon / Prism / seed |
+| [decisions/003-mock-echoes-return-notes.md](decisions/003-mock-echoes-return-notes.md) | Why the return-status route echoes `returnNotes` |
 | [00-project-overview.md](00-project-overview.md) | Stack and runtime URLs |

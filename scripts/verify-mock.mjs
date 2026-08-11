@@ -34,15 +34,26 @@ async function main() {
   results.push(await check("GET", "/api/deliveries"));
   results.push(await check("GET", "/api/returns"));
   results.push(
-    await check("PATCH", "/api/deliveries/DLV-003/status", {
+    // Numeric bookingId since HR-78 — string ids like "DLV-003" predate that change.
+    await check("PATCH", "/api/deliveries/3/status", {
       bookingStatus: "MOBILISED",
     })
   );
-  results.push(
-    await check("PATCH", "/api/returns/RET-002/status", {
-      bookingStatus: "COMPLETED",
-    })
-  );
+
+  // ADR 003: the return-status route echoes bookingStatus/returnNotes from the request body
+  // (Mockoon templating), unlike every other static-fixture route — assert that round-trip here.
+  const returnNotesSample = "Verified via mock:verify";
+  const returnPatch = await check("PATCH", "/api/returns/8/status", {
+    bookingStatus: "COMPLETED",
+    returnNotes: returnNotesSample,
+  });
+  if (returnPatch.ok && returnPatch.json?.returnNotes !== returnNotesSample) {
+    console.error(
+      `FAIL PATCH /api/returns/8/status did not echo returnNotes (got: ${JSON.stringify(returnPatch.json?.returnNotes)})`
+    );
+    returnPatch.ok = false;
+  }
+  results.push(returnPatch);
 
   const bookings = results[0].json;
   if (Array.isArray(bookings) && bookings.length > 0) {

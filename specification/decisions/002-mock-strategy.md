@@ -46,6 +46,7 @@ Rules:
 4. Optimistic UI updates on PATCH failure remain product behaviour ([05-offline-fallback.md](../product/05-offline-fallback.md)).
 5. Generated files under `mocks/.generated/` are not hand-edited; change OpenAPI/examples and re-run prepare.
 6. **Auth on Mockoon/Prism is static:** getBearerToken / login / logout return canned fixtures. They do **not** sign real JWTs or verify passwords. Use a real Spring backend (or MockWebServer scenarios) for credential-failure and token-lifecycle testing. Product caveats: [01-login.md](../product/01-login.md).
+7. **One narrow exception to "all fixtures are static":** the return-status route echoes `bookingStatus`/`returnNotes` from the request body via Mockoon templating. See [ADR 003](003-mock-echoes-return-notes.md).
 
 ## Consequences
 
