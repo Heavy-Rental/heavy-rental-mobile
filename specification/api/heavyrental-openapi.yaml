@@ -10,7 +10,9 @@ info:
       specification/domain/list-filters.md).
     - May also load `GET /api/bookings` for shared booking state; does not
       rebuild list screens by re-filtering bookings with device LocalDate.now().
-    - Updates status via delivery/return PATCH endpoints.
+    - Updates status via delivery/return PATCH endpoints. Returns additionally
+      accepts a `returnNotes` field on completion (`ReturnStatusUpdateRequest`)
+      — deliveries has no equivalent notes field.
     - Auth is an interim → access JWT handshake (getBearerToken → login → logout).
       Contract mirrors heavy-rental-spring-rest-api's
       specification/SPEC-auth-login-logout.md, which is the source of truth for
@@ -290,17 +292,21 @@ paths:
       operationId: updateReturnStatus
       summary: Update return booking status
       description: |
-        v1 client uses this for MOBILISED → COMPLETED.
+        v1 client uses this for MOBILISED → COMPLETED. Unlike deliveries, the
+        request body also carries an operator-entered returnNotes value —
+        see ReturnStatusUpdateRequest, a schema dedicated to this endpoint
+        rather than the shared StatusUpdateRequest used by deliveries.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/StatusUpdateRequest"
+              $ref: "#/components/schemas/ReturnStatusUpdateRequest"
             examples:
               complete:
                 value:
                   bookingStatus: COMPLETED
+                  returnNotes: Returned in good condition
       responses:
         "200":
           description: Updated return item
@@ -495,6 +501,7 @@ components:
         - assetName
         - serialNumber
         - deliveryNotes
+        - returnNotes
         - bookingStatus
       properties:
         bookingId:
@@ -518,6 +525,14 @@ components:
         deliveryNotes:
           type: string
           nullable: true
+          description: Note captured at delivery time — kept for context alongside returnNotes, not replaced by it
+        returnNotes:
+          type: string
+          nullable: true
+          description: >
+            Note entered by the operator on completion (MOBILISED → COMPLETED).
+            Empty/null until the booking is completed. See product/04-returns.md.
+          example: Returned in good condition
         bookingStatus:
           allOf:
             - $ref: "#/components/schemas/BookingStatus"
@@ -525,11 +540,30 @@ components:
 
     StatusUpdateRequest:
       type: object
+      description: Used by the delivery status endpoint only — no notes field.
       required:
         - bookingStatus
       properties:
         bookingStatus:
           $ref: "#/components/schemas/BookingStatus"
+
+    ReturnStatusUpdateRequest:
+      type: object
+      description: >
+        Used by the return status endpoint only. Deliberately a separate schema from
+        StatusUpdateRequest rather than that type plus an added field — deliveries has
+        no use for a notes field, so sharing the type would mean it silently accepts
+        one it ignores.
+      required:
+        - bookingStatus
+        - returnNotes
+      properties:
+        bookingStatus:
+          $ref: "#/components/schemas/BookingStatus"
+        returnNotes:
+          type: string
+          description: May be an empty string; there is no way to omit this field.
+          example: Returned in good condition
 
   examples:
     LoginResponseExample:
