@@ -148,15 +148,31 @@ class AppViewModel : ViewModel() {
         if (currentStatus == null || currentStatus != expectedCurrent) return
 
         viewModelScope.launch {
+            // Server-authoritative on explicit rejection (e.g. 400 — invalid transition
+            // per the backend's state-machine guard): do NOT apply locally, so the UI
+            // doesn't show a status change the server actually refused.
             try {
                 apiCall()
                 _networkError.value = null
+            } catch (e: HttpException) {
+                Log.e("API_ERROR", "Status update rejected by server (${e.code()})", e)
+                _networkError.value = "Update rejected by server (${e.code()}) — status unchanged."
+                return@launch
+            } catch (e: IOException) {
+                // No response reached us at all — can't confirm or deny server state.
+                // Apply optimistically so the app stays usable offline (see
+                // product/05-offline-fallback.md); reconciles on next successful loadData().
+                Log.e("API_ERROR", e.message ?: "Network error during status update", e)
+                _networkError.value = "Could not reach API — updated locally only. (${e.message})"
             } catch (e: Exception) {
+                // Unknown failure shape — treat conservatively like a rejection rather
+                // than risk showing a false success.
                 Log.e("API_ERROR", e.message ?: "Unknown error", e)
-                _networkError.value = "Could not sync status update to API — updated locally only. (${e.message})"
+                _networkError.value = "Could not sync status update — status unchanged. (${e.message})"
+                return@launch
             }
 
-            // Applied locally either way so the app stays usable if the API is unreachable.
+            // Reached only on success or a network/IO failure (optimistic offline case).
             // Update list rows in place — do NOT re-derive with toDeliveryItems()/toReturnItems()
             // (that re-applies device "today" and empties Mockoon fixtures with fixed dates).
             _bookings.value = _bookings.value.map { booking ->

@@ -178,8 +178,16 @@ private fun ReturnCard(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Text(item.assetName, style = MaterialTheme.typography.titleLarge, color = Foreground)
-        Text(item.serialNumber, style = MaterialTheme.typography.bodySmall, color = MutedForeground)
+        Text(
+            item.assetName.ifBlank { "Asset not specified" },
+            style = MaterialTheme.typography.titleLarge,
+            color = if (item.assetName.isBlank()) MutedForeground else Foreground
+        )
+        Text(
+            item.serialNumber.ifBlank { "No serial number" },
+            style = MaterialTheme.typography.bodySmall,
+            color = MutedForeground
+        )
 
         if (item.deliveryNotes.isNotBlank()) {
             Spacer(modifier = Modifier.height(4.dp))
