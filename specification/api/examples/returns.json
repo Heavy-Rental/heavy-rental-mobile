@@ -4,8 +4,10 @@
     "customerName": "Keppel Infrastructure",
     "endDate": "2026-08-03",
     "siteAddress": "1 Maritime Square, Harbourfront, Singapore 099253",
-    "assetName": "Liebherr LTM 1100 Mobile Crane",
-    "serialNumber": "LTM 1100-5.2",
+    "items": [
+      { "assetName": "Liebherr LTM 1100 Mobile Crane", "serialNumber": "LTM 1100-5.2" },
+      { "assetName": "Liebherr LTM 5500 Mobile Crane", "serialNumber": "LTM 2200-6.2" }
+    ],
     "deliveryNotes": "",
     "returnNotes": "Returned in good condition",
     "bookingStatus": "COMPLETED"
@@ -15,8 +17,9 @@
     "customerName": "Changi Airport Group",
     "endDate": "2026-08-03",
     "siteAddress": "Airport Logistics Park, 11 Airport Cargo Road, Singapore 819466",
-    "assetName": "Toyota 8FBE15 Electric Forklift",
-    "serialNumber": "8FBE15",
+    "items": [
+      { "assetName": "Toyota 8FBE15 Electric Forklift", "serialNumber": "8FBE15" }
+    ],
     "deliveryNotes": "Airside access pass required — confirm with site ops before arrival",
     "returnNotes": "",
     "bookingStatus": "MOBILISED"
@@ -26,8 +29,9 @@
     "customerName": "Changi Airport Group",
     "endDate": "2026-08-03",
     "siteAddress": "Airport Logistics Park, 11 Airport Cargo Road, Singapore 819466",
-    "assetName": "Toyota 8FBE15 Electric Forklift",
-    "serialNumber": "8FBE15",
+    "items": [
+      { "assetName": "Toyota 8FBE15 Electric Forklift", "serialNumber": "8FBE15" }
+    ],
     "deliveryNotes": "",
     "returnNotes": "",
     "bookingStatus": "MOBILISED"
@@ -37,8 +41,9 @@
     "customerName": "Poh Tiong Choon Logistics",
     "endDate": "2026-08-03",
     "siteAddress": "5 Pandan Road, Singapore 609254",
-    "assetName": "CAT 320 Hydraulic Excavator",
-    "serialNumber": "CAT 320 GC",
+    "items": [
+      { "assetName": "CAT 320 Hydraulic Excavator", "serialNumber": "CAT 320 GC" }
+    ],
     "deliveryNotes": "",
     "returnNotes": "",
     "bookingStatus": "MOBILISED"

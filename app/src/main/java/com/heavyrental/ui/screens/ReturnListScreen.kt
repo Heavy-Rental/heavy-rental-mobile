@@ -138,8 +138,13 @@ private fun ReturnCard(
             textContentColor = MutedForeground,
             title = { Text("Mark as Completed?", fontWeight = FontWeight.Bold) },
             text = {
+                val assetDescription = if (item.items.size > 1) {
+                    "all ${item.items.size} assets"
+                } else {
+                    "\"${item.items.firstOrNull()?.assetName.orEmpty()}\""
+                }
                 Text(
-                    "Update \"${item.assetName}\" status for ${item.customerName} from Mobilised to Completed. This cannot be undone.",
+                    "Update $assetDescription status for ${item.customerName} from Mobilised to Completed. This cannot be undone.",
                     style = MaterialTheme.typography.bodyMedium
                 )
             },
@@ -181,16 +186,32 @@ private fun ReturnCard(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Text(
-            item.assetName.ifBlank { "Asset not specified" },
-            style = MaterialTheme.typography.titleLarge,
-            color = if (item.assetName.isBlank()) MutedForeground else Foreground
-        )
-        Text(
-            item.serialNumber.ifBlank { "No serial number" },
-            style = MaterialTheme.typography.bodySmall,
-            color = MutedForeground
-        )
+        if (item.items.isEmpty()) {
+            Text(
+                "Asset not specified",
+                style = MaterialTheme.typography.titleLarge,
+                color = MutedForeground
+            )
+            Text(
+                "No serial number",
+                style = MaterialTheme.typography.bodySmall,
+                color = MutedForeground
+            )
+        } else {
+            item.items.forEachIndexed { index, line ->
+                if (index > 0) Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    line.assetName.ifBlank { "Asset not specified" },
+                    style = MaterialTheme.typography.titleLarge,
+                    color = if (line.assetName.isBlank()) MutedForeground else Foreground
+                )
+                Text(
+                    line.serialNumber.ifBlank { "No serial number" },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MutedForeground
+                )
+            }
+        }
 
         // Delivery-time note, kept for context (e.g. "airside access pass required").
         if (item.deliveryNotes.isNotBlank()) {

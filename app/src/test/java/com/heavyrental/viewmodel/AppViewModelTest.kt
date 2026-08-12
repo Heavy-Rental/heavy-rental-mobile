@@ -1,6 +1,7 @@
 package com.heavyrental.viewmodel
 
 import com.heavyrental.MainDispatcherRule
+import com.heavyrental.data.models.AssetLine
 import com.heavyrental.data.models.Booking
 import com.heavyrental.data.models.BookingStatus
 import com.heavyrental.data.models.DeliveryItem
@@ -52,8 +53,7 @@ class AppViewModelTest {
         endDate = today,
         bookingStatus = status,
         projectLocation = "123 Site Rd",
-        assetName = assetName,
-        serialNumber = "SN-$id",
+        items = listOf(AssetLine(assetName = assetName, serialNumber = "SN-$id")),
         deliveryNotes = ""
     )
 
@@ -62,8 +62,7 @@ class AppViewModelTest {
         customerName = "Acme Co",
         startDate = today,
         projectLocation = "123 Site Rd",
-        assetName = "JLG 460SJ Boom Lift",
-        serialNumber = "SN-$id",
+        items = listOf(AssetLine(assetName = "JLG 460SJ Boom Lift", serialNumber = "SN-$id")),
         deliveryNotes = "",
         bookingStatus = status
     )
@@ -73,8 +72,7 @@ class AppViewModelTest {
         customerName = "Acme Co",
         endDate = today,
         projectLocation = "123 Site Rd",
-        assetName = "JLG 460SJ Boom Lift",
-        serialNumber = "SN-$id",
+        items = listOf(AssetLine(assetName = "JLG 460SJ Boom Lift", serialNumber = "SN-$id")),
         deliveryNotes = "",
         returnNotes = returnNotes,
         bookingStatus = status

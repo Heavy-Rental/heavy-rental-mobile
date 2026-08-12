@@ -94,7 +94,7 @@ class StatusUpdateIntegrationTest {
         server.enqueue(MockResponse().setResponseCode(200).setBody("[]"))
         server.enqueue(
             MockResponse().setResponseCode(200).setBody(
-                """[{"bookingId":3,"customerName":"Acme Co","startDate":"2026-08-12","siteAddress":"123 Site Rd","assetName":"JLG 460SJ Boom Lift","serialNumber":"SN-3","bookingStatus":"CONFIRMED"}]"""
+                """[{"bookingId":3,"customerName":"Acme Co","startDate":"2026-08-12","siteAddress":"123 Site Rd","items":[{"assetName":"JLG 460SJ Boom Lift","serialNumber":"SN-3"}],"bookingStatus":"CONFIRMED"}]"""
             )
         )
         server.enqueue(MockResponse().setResponseCode(200).setBody("[]"))

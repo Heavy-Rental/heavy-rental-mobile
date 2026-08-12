@@ -8,8 +8,7 @@ data class DeliveryItem(
     val startDate: LocalDate,
     val projectLocation: String,
 
-    val assetName: String,
-    val serialNumber: String,
+    val items: List<AssetLine>,
     val deliveryNotes: String,
 
     val bookingStatus: BookingStatus?

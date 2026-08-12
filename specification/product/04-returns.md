@@ -50,7 +50,7 @@ Each card exposes (aligned with delivery list pattern):
 |-----------------|--------|
 | Booking id | Prefixed as `ID: {bookingId}` |
 | Status badge | Mobilised / Completed |
-| Asset name + serial number | Primary title lines — **one asset only**, see [03-deliveries.md](03-deliveries.md) K1 |
+| Asset name + serial number | Primary title lines — one per `AssetLine` in `items`, see [03-deliveries.md](03-deliveries.md) K1 |
 | Delivery notes | Shown when `deliveryNotes` is non-blank, as `Delivery note: {text}` — kept for context (e.g. access instructions from drop-off) alongside the return note, not replaced by it |
 | Return note input | Editable text field, visible only while status is `MOBILISED`; defaults to the booking's existing `returnNotes` if any |
 | Return note (recorded) | Shown once status is `COMPLETED` and `returnNotes` is non-blank, as `Return note: {text}` |
@@ -159,9 +159,9 @@ don't drift apart. See [03-deliveries.md](03-deliveries.md) — Known issues.
 
 | Ref | Summary | Status |
 |-----|---------|--------|
-| K1 | A multi-asset booking shows only one asset — `ReturnItemResponse` carries a single `assetName`/`serialNumber` and the server discards the rest | Blocked on a backend contract decision |
-| K2 | The `Qty: N` badge was removed by HR-78 (`quantity` has no backend equivalent) | Deliberate; restore with K1 |
-| K3 | Unknown status renders a grey "Unknown" badge; empty `assetName` renders a blank card title | Pre-existing |
+| K1 | A multi-asset booking shows only one asset — `ReturnItemResponse` carries a single `assetName`/`serialNumber` pair and the server discards the rest | Client-side implemented (`items: List<AssetLine>`, every entry rendered); blocked on the backend migrating to the `items` contract |
+| K2 | The `Qty: N` badge was removed by HR-78 (`quantity` has no backend equivalent) | Superseded, not literally restored — every `AssetLine` now gets its own row, so no separate count badge was added (see 03-deliveries.md) |
+| K3 | Unknown status renders a grey "Unknown" badge; empty `items` renders a blank card title | Fixed (HR-93; relocated to the per-`AssetLine` / empty-`items` pattern when K1 landed) — see 03-deliveries.md |
 
 For returns specifically, K1 means a driver can mark a booking `COMPLETED` while a second asset is
 still on site, with nothing on the card indicating it exists.

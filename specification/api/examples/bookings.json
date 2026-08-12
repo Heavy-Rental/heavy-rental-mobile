@@ -6,8 +6,9 @@
     "endDate": "2026-08-10",
     "bookingStatus": "MOBILISED",
     "siteAddress": "18 Tuas South Ave 14, Singapore 637471",
-    "assetName": "CAT 320 Hydraulic Excavator",
-    "serialNumber": "CAT 320 GC",
+    "items": [
+      { "assetName": "CAT 320 Hydraulic Excavator", "serialNumber": "CAT 320 GC" }
+    ],
     "deliveryNotes": ""
   },
   {
@@ -17,8 +18,9 @@
     "endDate": "2026-08-10",
     "bookingStatus": "MOBILISED",
     "siteAddress": "80 Tuas South Blvd, Singapore 637051",
-    "assetName": "Komatsu D65 Bulldozer",
-    "serialNumber": "D65EX-18",
+    "items": [
+      { "assetName": "Komatsu D65 Bulldozer", "serialNumber": "D65EX-18" }
+    ],
     "deliveryNotes": ""
   },
   {
@@ -28,20 +30,12 @@
     "endDate": "2026-08-10",
     "bookingStatus": "CONFIRMED",
     "siteAddress": "Jurong Port Road, Singapore 619110",
-    "assetName": "JLG 1350SJP Telescopic Boom",
-    "serialNumber": "1350SJP",
-    "deliveryNotes": "Two units on this booking — coordinate offload with site security"
-  },
-  {
-    "bookingId": 4,
-    "customerName": "Jurong Port Pte Ltd",
-    "startDate": "2026-08-03",
-    "endDate": "2026-08-10",
-    "bookingStatus": "CONFIRMED",
-    "siteAddress": "Jurong Port Road, Singapore 619110",
-    "assetName": "JLG 1350SJP Telescopic Boom",
-    "serialNumber": "1350SJP",
-    "deliveryNotes": ""
+    "items": [
+      { "assetName": "JLG 1350SJP Telescopic Boom", "serialNumber": "1350SJP-01" },
+      { "assetName": "JLG 1350SJP Telescopic Boom", "serialNumber": "1350SJP-02" },
+      { "assetName": "JLG 1350SJP Telescopic Boom", "serialNumber": "1350SJP-03" }
+    ],
+    "deliveryNotes": "Three units on this booking — coordinate offload with site security"
   },
   {
     "bookingId": 5,
@@ -50,8 +44,9 @@
     "endDate": "2026-08-10",
     "bookingStatus": "MOBILISED",
     "siteAddress": "80 Tuas South Blvd, Singapore 637051",
-    "assetName": "Komatsu D65 Bulldozer",
-    "serialNumber": "D65EX-18",
+    "items": [
+      { "assetName": "Komatsu D65 Bulldozer", "serialNumber": "D65EX-18" }
+    ],
     "deliveryNotes": ""
   },
   {
@@ -61,8 +56,9 @@
     "endDate": "2026-08-10",
     "bookingStatus": "CONFIRMED",
     "siteAddress": "1 Woodlands Industrial Park E1, Singapore 757700",
-    "assetName": "Volvo EC480E Excavator",
-    "serialNumber": "EC480E L",
+    "items": [
+      { "assetName": "Volvo EC480E Excavator", "serialNumber": "EC480E L" }
+    ],
     "deliveryNotes": ""
   },
   {
@@ -72,8 +68,10 @@
     "endDate": "2026-08-03",
     "bookingStatus": "COMPLETED",
     "siteAddress": "1 Maritime Square, Harbourfront, Singapore 099253",
-    "assetName": "Liebherr LTM 1100 Mobile Crane",
-    "serialNumber": "LTM 1100-5.2",
+    "items": [
+      { "assetName": "Liebherr LTM 1100 Mobile Crane", "serialNumber": "LTM 1100-5.2" },
+      { "assetName": "Liebherr LTM 5500 Mobile Crane", "serialNumber": "LTM 2200-6.2" }
+    ],
     "deliveryNotes": ""
   },
   {
@@ -83,8 +81,9 @@
     "endDate": "2026-08-03",
     "bookingStatus": "MOBILISED",
     "siteAddress": "Airport Logistics Park, 11 Airport Cargo Road, Singapore 819466",
-    "assetName": "Toyota 8FBE15 Electric Forklift",
-    "serialNumber": "8FBE15",
+    "items": [
+      { "assetName": "Toyota 8FBE15 Electric Forklift", "serialNumber": "8FBE15" }
+    ],
     "deliveryNotes": "Airside access pass required — confirm with site ops before arrival"
   },
   {
@@ -94,8 +93,9 @@
     "endDate": "2026-08-03",
     "bookingStatus": "MOBILISED",
     "siteAddress": "Airport Logistics Park, 11 Airport Cargo Road, Singapore 819466",
-    "assetName": "Toyota 8FBE15 Electric Forklift",
-    "serialNumber": "8FBE15",
+    "items": [
+      { "assetName": "Toyota 8FBE15 Electric Forklift", "serialNumber": "8FBE15" }
+    ],
     "deliveryNotes": ""
   },
   {
@@ -105,8 +105,9 @@
     "endDate": "2026-08-03",
     "bookingStatus": "MOBILISED",
     "siteAddress": "5 Pandan Road, Singapore 609254",
-    "assetName": "CAT 320 Hydraulic Excavator",
-    "serialNumber": "CAT 320 GC",
+    "items": [
+      { "assetName": "CAT 320 Hydraulic Excavator", "serialNumber": "CAT 320 GC" }
+    ],
     "deliveryNotes": ""
   }
 ]

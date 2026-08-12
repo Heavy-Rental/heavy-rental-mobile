@@ -1,6 +1,8 @@
 package com.heavyrental.network
 
+import com.heavyrental.data.models.AssetLine
 import com.heavyrental.data.models.BookingStatus
+import com.heavyrental.network.dto.AssetLineDto
 import com.heavyrental.network.dto.DeliveryItemDto
 import com.heavyrental.network.dto.ReturnItemDto
 import org.junit.Assert.assertEquals
@@ -15,53 +17,59 @@ import org.junit.Test
  */
 class MappersTest {
 
-    private fun deliveryDto(assetName: String = "JLG 460SJ Boom Lift", serialNumber: String = "SN-1") =
+    private fun deliveryDto(items: List<AssetLineDto> = listOf(AssetLineDto("JLG 460SJ Boom Lift", "SN-1"))) =
         DeliveryItemDto(
             bookingId = 1L,
             customerName = "Acme Co",
             startDate = "2026-08-12",
             siteAddress = "123 Site Rd",
-            assetName = assetName,
-            serialNumber = serialNumber,
+            items = items,
             deliveryNotes = null,
             bookingStatus = "CONFIRMED"
         )
 
-    private fun returnDto(assetName: String = "JLG 460SJ Boom Lift", serialNumber: String = "SN-1") =
+    private fun returnDto(items: List<AssetLineDto> = listOf(AssetLineDto("JLG 460SJ Boom Lift", "SN-1"))) =
         ReturnItemDto(
             bookingId = 1L,
             customerName = "Acme Co",
             endDate = "2026-08-12",
             siteAddress = "123 Site Rd",
-            assetName = assetName,
-            serialNumber = serialNumber,
+            items = items,
             deliveryNotes = null,
             returnNotes = null,
             bookingStatus = "MOBILISED"
         )
 
     @Test
-    fun `blank assetName and serialNumber pass through unchanged on delivery items`() {
-        val item = deliveryDto(assetName = "", serialNumber = "").toDeliveryItem()
+    fun `empty items list passes through unchanged on delivery items`() {
+        val item = deliveryDto(items = emptyList()).toDeliveryItem()
 
-        assertEquals("", item.assetName)
-        assertEquals("", item.serialNumber)
+        assertEquals(emptyList<AssetLine>(), item.items)
     }
 
     @Test
-    fun `blank assetName and serialNumber pass through unchanged on return items`() {
-        val item = returnDto(assetName = "", serialNumber = "").toReturnItem()
+    fun `empty items list passes through unchanged on return items`() {
+        val item = returnDto(items = emptyList()).toReturnItem()
 
-        assertEquals("", item.assetName)
-        assertEquals("", item.serialNumber)
+        assertEquals(emptyList<AssetLine>(), item.items)
     }
 
     @Test
-    fun `non-blank assetName and serialNumber pass through unchanged`() {
-        val item = deliveryDto().toDeliveryItem()
+    fun `blank assetName and serialNumber inside an item pass through unchanged`() {
+        val item = deliveryDto(items = listOf(AssetLineDto("", ""))).toDeliveryItem()
 
-        assertEquals("JLG 460SJ Boom Lift", item.assetName)
-        assertEquals("SN-1", item.serialNumber)
+        assertEquals(listOf(AssetLine("", "")), item.items)
+    }
+
+    @Test
+    fun `multiple items pass through unchanged, in order`() {
+        val dto = listOf(AssetLineDto("JLG 460SJ Boom Lift", "SN-1"), AssetLineDto("Toyota 8FD25 Forklift", "SN-2"))
+        val item = deliveryDto(items = dto).toDeliveryItem()
+
+        assertEquals(
+            listOf(AssetLine("JLG 460SJ Boom Lift", "SN-1"), AssetLine("Toyota 8FD25 Forklift", "SN-2")),
+            item.items
+        )
     }
 
     @Test

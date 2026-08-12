@@ -3,6 +3,12 @@ package com.heavyrental.network.dto
 import kotlinx.serialization.Serializable
 
 @Serializable
+data class AssetLineDto(
+    val assetName: String,
+    val serialNumber: String
+)
+
+@Serializable
 data class BookingDto(
     val bookingId: Long,
     val customerName: String? = null,
@@ -10,8 +16,7 @@ data class BookingDto(
     val endDate: String? = null,
     val bookingStatus: String? = null,
     val siteAddress: String? = null,
-    val assetName: String,
-    val serialNumber: String,
+    val items: List<AssetLineDto>,
     val deliveryNotes: String? = null
 )
 
@@ -21,8 +26,7 @@ data class DeliveryItemDto(
     val customerName: String? = null,
     val startDate: String? = null,
     val siteAddress: String? = null,
-    val assetName: String,
-    val serialNumber: String,
+    val items: List<AssetLineDto>,
     val deliveryNotes: String? = null,
     val bookingStatus: String? = null
 )
@@ -33,8 +37,7 @@ data class ReturnItemDto(
     val customerName: String? = null,
     val endDate: String? = null,
     val siteAddress: String? = null,
-    val assetName: String,
-    val serialNumber: String,
+    val items: List<AssetLineDto>,
     val deliveryNotes: String? = null,
     val returnNotes: String? = null,
     val bookingStatus: String? = null

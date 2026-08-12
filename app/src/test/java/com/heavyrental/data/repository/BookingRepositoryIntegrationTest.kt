@@ -58,7 +58,7 @@ class BookingRepositoryIntegrationTest {
 
     @Test
     fun `updateDeliveryStatus sends bookingStatus-only payload`() = runTest {
-        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"bookingId":3,"assetName":"a","serialNumber":"s"}"""))
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"bookingId":3,"items":[]}"""))
 
         repository.updateDeliveryStatus(3L, BookingStatus.MOBILISED)
 
@@ -70,7 +70,7 @@ class BookingRepositoryIntegrationTest {
 
     @Test
     fun `updateReturnStatus sends bookingStatus and returnNotes as its own schema`() = runTest {
-        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"bookingId":5,"assetName":"a","serialNumber":"s"}"""))
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"bookingId":5,"items":[]}"""))
 
         repository.updateReturnStatus(5L, BookingStatus.COMPLETED, "Returned in good condition")
 
@@ -123,7 +123,7 @@ class BookingRepositoryIntegrationTest {
     fun `getTodaysDeliveries maps the JSON array end-to-end`() = runTest {
         server.enqueue(
             MockResponse().setResponseCode(200).setBody(
-                """[{"bookingId":3,"customerName":"Acme Co","startDate":"2026-08-12","siteAddress":"123 Site Rd","assetName":"JLG 460SJ Boom Lift","serialNumber":"SN-3","bookingStatus":"CONFIRMED"}]"""
+                """[{"bookingId":3,"customerName":"Acme Co","startDate":"2026-08-12","siteAddress":"123 Site Rd","items":[{"assetName":"JLG 460SJ Boom Lift","serialNumber":"SN-3"}],"bookingStatus":"CONFIRMED"}]"""
             )
         )
 
@@ -131,7 +131,9 @@ class BookingRepositoryIntegrationTest {
 
         assertEquals(1, deliveries.size)
         assertEquals(3L, deliveries[0].bookingId)
-        assertEquals("JLG 460SJ Boom Lift", deliveries[0].assetName)
+        assertEquals(1, deliveries[0].items.size)
+        assertEquals("JLG 460SJ Boom Lift", deliveries[0].items[0].assetName)
+        assertEquals("SN-3", deliveries[0].items[0].serialNumber)
         assertEquals(BookingStatus.CONFIRMED, deliveries[0].bookingStatus)
     }
 
@@ -139,7 +141,7 @@ class BookingRepositoryIntegrationTest {
     fun `getTodaysReturns maps the JSON array end-to-end`() = runTest {
         server.enqueue(
             MockResponse().setResponseCode(200).setBody(
-                """[{"bookingId":5,"customerName":"Acme Co","endDate":"2026-08-12","siteAddress":"123 Site Rd","assetName":"Toyota 8FD25 Forklift","serialNumber":"SN-5","returnNotes":"","bookingStatus":"MOBILISED"}]"""
+                """[{"bookingId":5,"customerName":"Acme Co","endDate":"2026-08-12","siteAddress":"123 Site Rd","items":[{"assetName":"Toyota 8FD25 Forklift","serialNumber":"SN-5"}],"returnNotes":"","bookingStatus":"MOBILISED"}]"""
             )
         )
 
@@ -147,7 +149,9 @@ class BookingRepositoryIntegrationTest {
 
         assertEquals(1, returns.size)
         assertEquals(5L, returns[0].bookingId)
-        assertEquals("Toyota 8FD25 Forklift", returns[0].assetName)
+        assertEquals(1, returns[0].items.size)
+        assertEquals("Toyota 8FD25 Forklift", returns[0].items[0].assetName)
+        assertEquals("SN-5", returns[0].items[0].serialNumber)
         assertEquals(BookingStatus.MOBILISED, returns[0].bookingStatus)
     }
 }
