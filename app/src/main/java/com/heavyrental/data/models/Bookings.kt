@@ -12,8 +12,7 @@ data class Booking(
     val projectLocation: String,
 
     // Asset information
-    val assetName: String,
-    val serialNumber: String,
+    val items: List<AssetLine>,
     val deliveryNotes: String,
 )
 
@@ -24,8 +23,7 @@ fun Booking.toDeliveryItem(): DeliveryItem = DeliveryItem(
     customerName = customerName,
     startDate = startDate,
     projectLocation = projectLocation,
-    assetName = assetName,
-    serialNumber = serialNumber,
+    items = items,
     deliveryNotes = deliveryNotes,
     bookingStatus = bookingStatus
 )
@@ -35,8 +33,7 @@ fun Booking.toReturnItem(): ReturnItem = ReturnItem(
     customerName = customerName,
     endDate = endDate,
     projectLocation = projectLocation,
-    assetName = assetName,
-    serialNumber = serialNumber,
+    items = items,
     deliveryNotes = deliveryNotes,
     returnNotes = "",
     bookingStatus = bookingStatus

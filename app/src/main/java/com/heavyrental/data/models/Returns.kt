@@ -8,8 +8,7 @@ data class ReturnItem(
     val endDate: LocalDate,
     val projectLocation: String,
 
-    val assetName: String,
-    val serialNumber: String,
+    val items: List<AssetLine>,
     val deliveryNotes: String,
     val returnNotes: String,
 

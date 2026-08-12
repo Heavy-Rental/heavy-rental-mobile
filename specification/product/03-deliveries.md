@@ -50,7 +50,7 @@ Each card exposes:
 |-----------------|--------|
 | Booking id | Prefixed as `ID: {bookingId}` |
 | Status badge | Confirmed (amber) / Mobilised (blue) |
-| Asset name + serial number | Primary title lines — **one asset only**, see Known issues K1; blank values show `"Asset not specified"` / `"No serial number"` instead of an empty heading (K3, fixed HR-93) |
+| Asset name + serial number | Primary title lines — one per `AssetLine` in `items` (see Known issues K1); blank values show `"Asset not specified"` / `"No serial number"` instead of an empty heading (K3, fixed HR-93) |
 | Delivery notes | Shown when `deliveryNotes` is non-blank, as `Note: {text}` |
 | Customer name | Person icon row |
 | Project location | Location icon row (`projectLocation`; wire field `siteAddress`) |
@@ -150,7 +150,7 @@ Contract: [api/heavyrental-openapi.yaml](../api/heavyrental-openapi.yaml), examp
 Recorded here rather than fixed. Each entry states a reproduction, a recommended fix, and its
 status, following the same convention as the backend's `SPEC-booking-delivery-return-api.md` §6.
 
-### K1 — A multi-asset booking shows only one asset *(ticket: TBD)*
+### K1 — A multi-asset booking shows only one asset *(ticket: HR-113, client-side only)*
 
 `DeliveryItemResponse` carries a single `assetName`/`serialNumber` pair, but a backend `Booking`
 has one-to-many `booking_items`. The server picks one via
@@ -168,16 +168,25 @@ second on site. The app gives no indication a second asset exists.
 `items` array is added — then both sides. Cannot be fixed client-side; the data never arrives.
 The backend spec records the same issue in its §6.2 with a matching recommendation.
 
-**Status:** blocked on a backend contract decision. Not a regression from HR-78.
+**Status:** client-side implemented (HR-113) — `Booking`/`DeliveryItem`/`ReturnItem` now carry
+`items: List<AssetLine>` and `DeliveryCard`/`ReturnCard` render every entry, not just the first
+(see `MockDataRepository` booking `1`, seeded with a boom lift and a forklift to exercise this).
+This fixes the model/DTO/UI half only — still blocked on the backend: `BookingMapper.primaryAsset()`
+(`SPEC-booking-delivery-return-api.md` §6.2) hasn't migrated to the `items` contract yet, so real
+API responses won't populate `items` until that lands.
 
-### K2 — The `Qty: N` badge was removed *(ticket: TBD)*
+### K2 — The `Qty: N` badge was removed *(ticket: HR-113, client-side only)*
 
 Until HR-78 the card showed `Qty: N` when `quantity > 1`. `quantity` has no equivalent in the Spring
 `BookingResponse`, so the field was dropped from the model and the badge with it. That badge was the
 only UI that made **K1** visible to a driver.
 
-**Status:** deliberate, documented here so the removal isn't mistaken for a rendering bug. Restore
-alongside K1 once the contract can express more than one asset.
+**Status:** superseded by the K1 fix rather than literally restored. The old `Qty: N` badge meant
+N identical units of the same asset — `items: List<AssetLine>` can't assume that (booking 1's seed
+data has a boom lift *and* a forklift, not 2x the same machine), so a numeric badge with that old
+meaning would misinform a driver. Instead, each `AssetLine` now renders as its own full name/serial
+row unconditionally, so the count is visible directly from the card without a separate badge
+element. Still blocked on the backend the same way K1 is.
 
 ### K3 — Card rendering for out-of-range values *(ticket: TBD)*
 
@@ -188,17 +197,19 @@ Two cases where a card renders in a way that reads as broken rather than as data
   have no badge styling of their own beyond the grey fallback already built into the status `when`
   expression, so this already renders as legible data ("Unknown"), not a blank badge. No code
   change was needed for this half of K3.
-- **Empty `assetName` → blank title.** Documented backend behaviour, not a client fault: a booking
-  with no `BookingItem` rows maps to `assetName: ""` / `serialNumber: ""`
+- **Empty `items` → blank title.** Documented backend behaviour, not a client fault: a booking
+  with no `BookingItem` rows maps to `items: []`
   (`SPEC-booking-delivery-return-api.md` §5.3). The card previously rendered an empty heading.
 
-**Fix (HR-93):** `assetName` falls back to `"Asset not specified"` and `serialNumber` falls back to
-`"No serial number"` via Kotlin's `ifBlank {}`, both rendered in `MutedForeground` so they read as
-placeholder data rather than a normal value.
+**Fix (HR-93):** an empty `items` list falls back to `"Asset not specified"` / `"No serial number"`;
+a non-empty list falls back per-line via the same `ifBlank {}` pattern on each `AssetLine`'s
+`assetName`/`serialNumber` — both rendered in `MutedForeground` so they read as placeholder data
+rather than a normal value.
 
-**Status:** fixed for `assetName`/`serialNumber` (HR-93). The status-badge fallback was already
-correct and needed no change. Applies equally to the return list — `ReturnCard` uses the identical
-`ifBlank {}` pattern.
+**Status:** fixed for `assetName`/`serialNumber` (HR-93), relocated to the per-`AssetLine` and
+empty-`items` cases when `items` replaced the flat fields (K1). The status-badge fallback was
+already correct and needed no change. Applies equally to the return list — `ReturnCard` uses the
+identical `ifBlank {}` pattern.
 
 ---
 

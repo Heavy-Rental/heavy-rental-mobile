@@ -395,14 +395,30 @@ components:
       enum: [PENDING_DEPOSIT, PENDING_CONFIRMED, CONFIRMED, MOBILISED, COMPLETED, CANCELLED]
       description: Hire lifecycle status (see specification/domain/booking-status-machine.md)
 
+    AssetLine:
+      type: object
+      description: One physical asset on a booking — see product/03-deliveries.md K1.
+      required:
+        - assetName
+        - serialNumber
+      properties:
+        assetName:
+          type: string
+          example: JLG 460SJ Boom Lift
+        serialNumber:
+          type: string
+          example: SN-1A
+
     Booking:
       type: object
       description: >
         Nullability follows the backend column definitions (SPEC-entity-repository.md §5.7):
         customer, start_date, end_date, status, site_address and delivery_notes are all
         nullable, so the key is always present but its value may be null. Clients must
-        tolerate null rather than failing the whole response. assetName/serialNumber are
-        derived by BookingMapper and default to "" when a booking has no items.
+        tolerate null rather than failing the whole response. `items` reflects the one-to-many
+        BookingItem relationship directly, one entry per row — see product/03-deliveries.md K1
+        (client-side fixed; backend still on BookingMapper.primaryAsset() pending its own
+        migration).
       required:
         - bookingId
         - customerName
@@ -410,8 +426,7 @@ components:
         - endDate
         - bookingStatus
         - siteAddress
-        - assetName
-        - serialNumber
+        - items
         - deliveryNotes
       properties:
         bookingId:
@@ -441,13 +456,16 @@ components:
           type: string
           nullable: true
           example: 18 Tuas South Ave 14, Singapore 637471
-        assetName:
-          type: string
-          description: Empty string when the booking has no items — see 03-deliveries.md K1
-          example: CAT 320 Hydraulic Excavator
-        serialNumber:
-          type: string
-          example: CAT 320 GC
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssetLine"
+          description: One entry per BookingItem row. Empty array when the booking has no items.
+          example:
+            - assetName: JLG 460SJ Boom Lift
+              serialNumber: SN-1A
+            - assetName: Toyota 8FD25 Forklift
+              serialNumber: SN-1B
         deliveryNotes:
           type: string
           nullable: true
@@ -460,8 +478,7 @@ components:
         - customerName
         - startDate
         - siteAddress
-        - assetName
-        - serialNumber
+        - items
         - deliveryNotes
         - bookingStatus
       properties:
@@ -478,11 +495,11 @@ components:
         siteAddress:
           type: string
           nullable: true
-        assetName:
-          type: string
-          description: One asset only — see 03-deliveries.md K1
-        serialNumber:
-          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssetLine"
+          description: One entry per BookingItem row — see 03-deliveries.md K1 (client-side fixed).
         deliveryNotes:
           type: string
           nullable: true
@@ -498,8 +515,7 @@ components:
         - customerName
         - endDate
         - siteAddress
-        - assetName
-        - serialNumber
+        - items
         - deliveryNotes
         - returnNotes
         - bookingStatus
@@ -517,11 +533,11 @@ components:
         siteAddress:
           type: string
           nullable: true
-        assetName:
-          type: string
-          description: One asset only — see 03-deliveries.md K1
-        serialNumber:
-          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssetLine"
+          description: One entry per BookingItem row — see 03-deliveries.md K1 (client-side fixed).
         deliveryNotes:
           type: string
           nullable: true
