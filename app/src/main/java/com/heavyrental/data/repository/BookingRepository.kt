@@ -4,6 +4,7 @@ import com.heavyrental.data.models.Booking
 import com.heavyrental.data.models.BookingStatus
 import com.heavyrental.data.models.DeliveryItem
 import com.heavyrental.data.models.ReturnItem
+import com.heavyrental.network.HeavyRentalApiService
 import com.heavyrental.network.RetrofitInstance
 import com.heavyrental.network.toBooking
 import com.heavyrental.network.toDeliveryItem
@@ -11,9 +12,7 @@ import com.heavyrental.network.toReturnItem
 import com.heavyrental.network.dto.ReturnStatusUpdateRequestDto
 import com.heavyrental.network.dto.StatusUpdateRequest
 
-class BookingRepository {
-
-    private val api = RetrofitInstance.api
+class BookingRepository(private val api: HeavyRentalApiService = RetrofitInstance.api) {
 
     // PATCH /api/deliveries/{bookingId}/status — e.g. CONFIRMED → MOBILISED
     suspend fun updateDeliveryStatus(bookingId: Long, newStatus: BookingStatus) {

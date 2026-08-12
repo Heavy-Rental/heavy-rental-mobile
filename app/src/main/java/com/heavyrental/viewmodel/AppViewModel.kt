@@ -29,10 +29,11 @@ data class AppState(
     val isLoggingIn: Boolean = false
 )
 
-class AppViewModel : ViewModel() {
+class AppViewModel @JvmOverloads constructor(
+    private val authRepository: AuthRepository = AuthRepository(),
+    private val bookingRepository: BookingRepository = BookingRepository()
+) : ViewModel() {
 
-    private val authRepository = AuthRepository()
-    private val bookingRepository = BookingRepository()
     private val _state = MutableStateFlow(AppState())
     val state: StateFlow<AppState> = _state.asStateFlow()
 

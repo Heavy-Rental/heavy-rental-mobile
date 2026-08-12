@@ -32,6 +32,16 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+            // AppViewModel calls android.util.Log.e(...) in every catch branch; on the plain JVM
+            // (non-Robolectric) unit tests that stub jar throws instead of no-op'ing, which crashes
+            // the coroutine before it ever reaches the following networkError/state assignment.
+            // Return defaults instead so those Log calls are silent no-ops, matching real behaviour.
+            isReturnDefaultValues = true
+        }
+    }
 }
 
 dependencies {
@@ -53,4 +63,16 @@ dependencies {
     implementation(libs.retrofit.kotlinx.serialization.converter)
     implementation(libs.okhttp.logging.interceptor)
     implementation(libs.kotlinx.serialization.json)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.okhttp.mockwebserver)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.ui.test.junit4)
+    testImplementation(libs.androidx.ui.tooling)
+    debugImplementation(libs.androidx.ui.test.manifest)
 }
