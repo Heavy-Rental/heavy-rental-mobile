@@ -50,7 +50,7 @@ Each card exposes:
 |-----------------|--------|
 | Booking id | Prefixed as `ID: {bookingId}` |
 | Status badge | Confirmed (amber) / Mobilised (blue) |
-| Asset name + serial number | Primary title lines — **one asset only**, see Known issues |
+| Asset name + serial number | Primary title lines — **one asset only**, see Known issues K1; blank values show `"Asset not specified"` / `"No serial number"` instead of an empty heading (K3, fixed HR-93) |
 | Delivery notes | Shown when `deliveryNotes` is non-blank, as `Note: {text}` |
 | Customer name | Person icon row |
 | Project location | Location icon row (`projectLocation`; wire field `siteAddress`) |
@@ -185,16 +185,20 @@ Two cases where a card renders in a way that reads as broken rather than as data
 
 - **Unknown status → grey "Unknown" badge.** The four display-only statuses
   (`PENDING_DEPOSIT`, `PENDING_CONFIRMED`, `CANCELLED`, and any value added backend-side later)
-  have no badge styling of their own. They shouldn't appear on the delivery list given its
-  membership filter, but `GET /api/bookings` can return all six.
+  have no badge styling of their own beyond the grey fallback already built into the status `when`
+  expression, so this already renders as legible data ("Unknown"), not a blank badge. No code
+  change was needed for this half of K3.
 - **Empty `assetName` → blank title.** Documented backend behaviour, not a client fault: a booking
   with no `BookingItem` rows maps to `assetName: ""` / `serialNumber: ""`
-  (`SPEC-booking-delivery-return-api.md` §5.3). The card renders an empty heading.
+  (`SPEC-booking-delivery-return-api.md` §5.3). The card previously rendered an empty heading.
 
-**Recommended fix:** an explicit placeholder for each (`"—"` or `"No asset recorded"`), so the
-absence is legible as data rather than as a rendering failure.
+**Fix (HR-93):** `assetName` falls back to `"Asset not specified"` and `serialNumber` falls back to
+`"No serial number"` via Kotlin's `ifBlank {}`, both rendered in `MutedForeground` so they read as
+placeholder data rather than a normal value.
 
-**Status:** pre-existing. Applies equally to the return list.
+**Status:** fixed for `assetName`/`serialNumber` (HR-93). The status-badge fallback was already
+correct and needed no change. Applies equally to the return list — `ReturnCard` uses the identical
+`ifBlank {}` pattern.
 
 ---
 

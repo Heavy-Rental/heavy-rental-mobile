@@ -92,7 +92,9 @@ preconditions:
   - requested newStatus == MOBILISED
 effect:
   - attempt API PATCH /api/deliveries/{bookingId}/status
-  - booking.bookingStatus = MOBILISED (local, even if PATCH failed)  ← see open question below
+  - booking.bookingStatus = MOBILISED locally on success or IOException (unreachable);
+    NOT applied if the server responds with an HttpException (explicit rejection) — see
+    resolved guards note below
   - refresh derived delivery/return lists
 ```
 
@@ -106,7 +108,9 @@ preconditions:
   - returnNotes: String — whatever is in the return note field, may be blank
 effect:
   - attempt API PATCH /api/returns/{bookingId}/status with { bookingStatus, returnNotes }
-  - booking.bookingStatus = COMPLETED (local, even if PATCH failed)  ← see open question below
+  - booking.bookingStatus = COMPLETED locally on success or IOException (unreachable);
+    NOT applied if the server responds with an HttpException (explicit rejection) — see
+    resolved guards note below
   - booking.returnNotes = returnNotes (local, same conditions as the status change above)
   - refresh derived delivery/return lists
 ```
@@ -115,20 +119,25 @@ Shared implementation: `AppViewModel.updateBookingStatus(id, expectedCurrent, ex
 `returnNotes` is `null` for the delivery path (`updateDeliveryStatus` never passes one) and is only
 ever applied to the `_returns` list, never to deliveries or bookings.
 
-### Open question — client guards vs. server guards (undecided)
+### Client guards vs. server guards — RESOLVED (HR-93)
 
-The "even if PATCH failed" clause above is deliberate v1 design, specified in
+The "applied even on failure" clause above was deliberate v1 design, specified in
 [05-offline-fallback.md](../product/05-offline-fallback.md) Principle 3. It was written when the
 only backend was Mockoon, which returns `200` to any request and **cannot** reject a transition —
 so the client's own preconditions were the only guard that existed, and applying locally was safe.
 
 The Spring backend enforces the same two transitions server-side and returns `400` on anything else
-(`SPEC-booking-delivery-return-api.md` §4, Requirements 4.2/6). Now that HR-78 points the app at it,
-the guards are duplicated and the failure mode has inverted: a rejected transition still ends in the
-new status on screen.
+(`SPEC-booking-delivery-return-api.md` §4, Requirements 4.2/6), and a driver's request returns `403`
+(`ROLE_DRIVER` excluded from protected routes, `SPEC-api-index.md` §4). Now that HR-78 points the
+app at it, the guards above are no longer the only ones — the server's guard can now say no after
+the client's guard already said yes.
 
-Not resolved here. See [05-offline-fallback.md](../product/05-offline-fallback.md) — that file owns
-the decision, this one just flags that the guards above are no longer the only ones.
+**Decision (HR-93):** split by failure type. `AppViewModel.updateBookingStatus` now applies the
+local transition only on success or on `IOException` (host genuinely unreachable); an
+`HttpException` (server explicitly responded, e.g. `400`/`403`) or any other exception leaves the
+booking's status unchanged. See [05-offline-fallback.md](../product/05-offline-fallback.md) O1 for
+the full write-up, including the residual gap (O2) around distinguishing `400` from `403` in the
+error copy shown to the operator.
 
 ---
 
