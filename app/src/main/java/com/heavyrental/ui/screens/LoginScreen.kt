@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -25,11 +26,21 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialException
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.heavyrental.ui.theme.*
+import kotlinx.coroutines.launch
+
+private const val WEB_CLIENT_ID = "313475501082-t9i007sog897m9tafkjp2c8lot3kinrv.apps.googleusercontent.com"
 
 @Composable
 fun LoginScreen(
     onLogin: (email: String, password: String) -> Unit,
+    onGoogleLogin: (idToken: String) -> Unit,
+    onGoogleLoginFailed: (message: String) -> Unit,
     loginError: String?,
     isLoggingIn: Boolean = false
 ) {
@@ -37,6 +48,8 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     Box(
         modifier = Modifier
@@ -168,6 +181,42 @@ fun LoginScreen(
                 } else {
                     Text("Sign In", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.Black)
                 }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text("or", color = MutedForeground, style = MaterialTheme.typography.bodySmall)
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedButton(
+                onClick = {
+                    coroutineScope.launch {
+                        try {
+                            val credentialManager = CredentialManager.create(context)
+                            val googleIdOption = GetGoogleIdOption.Builder()
+                                .setFilterByAuthorizedAccounts(false)
+                                .setServerClientId(WEB_CLIENT_ID)
+                                .build()
+                            val request = GetCredentialRequest.Builder()
+                                .addCredentialOption(googleIdOption)
+                                .build()
+
+                            val result = credentialManager.getCredential(context, request)
+                            val googleIdTokenCredential =
+                                GoogleIdTokenCredential.createFrom(result.credential.data)
+                            onGoogleLogin(googleIdTokenCredential.idToken)
+                        } catch (e: GetCredentialException) {
+                            android.util.Log.e("GOOGLE_AUTH", "type=${e.type} message=${e.message}", e)
+                            onGoogleLoginFailed("Google sign-in was cancelled or failed. Please try again.")
+                        }
+                    }
+                },
+                enabled = !isLoggingIn,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Continue with Google", fontWeight = FontWeight.Medium, fontSize = 16.sp)
             }
 
             Spacer(modifier = Modifier.height(16.dp))

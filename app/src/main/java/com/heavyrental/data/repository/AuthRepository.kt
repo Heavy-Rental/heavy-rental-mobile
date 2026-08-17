@@ -4,6 +4,7 @@ import com.heavyrental.network.RetrofitInstance
 import com.heavyrental.network.TokenSession
 import com.heavyrental.network.dto.LoginRequest
 import com.heavyrental.network.dto.LoginResponse
+import com.heavyrental.network.dto.GoogleLoginRequest
 
 /**
  * Interim → access Bearer login/logout, per
@@ -33,6 +34,24 @@ class AuthRepository {
         )
 
         // Interim is single-use (denylisted by the server on successful login).
+        TokenSession.interimToken = null
+        TokenSession.accessToken = response.accessToken
+        return response
+    }
+
+    /**
+     * Same interim -> access handshake as [login], but the second step exchanges a
+     * Google-issued ID token (from Credential Manager) instead of email/password.
+     */
+    suspend fun loginWithGoogle(googleIdToken: String): LoginResponse {
+        val interim = api.getBearerToken().string().trim()
+        TokenSession.interimToken = interim
+
+        val response = api.loginWithGoogle(
+            interimBearer = "Bearer $interim",
+            request = GoogleLoginRequest(idToken = googleIdToken)
+        )
+
         TokenSession.interimToken = null
         TokenSession.accessToken = response.accessToken
         return response

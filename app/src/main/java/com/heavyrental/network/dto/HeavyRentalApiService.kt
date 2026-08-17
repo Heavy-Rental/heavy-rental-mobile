@@ -9,6 +9,7 @@ import com.heavyrental.network.dto.MessageResponse
 import com.heavyrental.network.dto.ReturnItemDto
 import com.heavyrental.network.dto.ReturnStatusUpdateRequestDto
 import com.heavyrental.network.dto.StatusUpdateRequest
+import com.heavyrental.network.dto.GoogleLoginRequest
 import okhttp3.ResponseBody
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -32,6 +33,12 @@ interface HeavyRentalApiService {
     suspend fun login(
         @Header("Authorization") interimBearer: String,
         @Body request: LoginRequest
+    ): LoginResponse
+
+    @POST("api/auth/google")
+    suspend fun loginWithGoogle(
+        @Header("Authorization") interimBearer: String,
+        @Body request: GoogleLoginRequest
     ): LoginResponse
 
     @POST("api/auth/logout")

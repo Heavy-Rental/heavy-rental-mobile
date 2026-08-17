@@ -13,13 +13,14 @@ info:
     - Updates status via delivery/return PATCH endpoints. Returns additionally
       accepts a `returnNotes` field on completion (`ReturnStatusUpdateRequest`)
       — deliveries has no equivalent notes field.
-    - Auth is an interim → access JWT handshake (getBearerToken → login → logout).
+    - Auth is an interim → access JWT handshake (getBearerToken → login/google → logout).
       Contract mirrors heavy-rental-spring-rest-api's
       specification/SPEC-auth-login-logout.md, which is the source of truth for
       server-side behaviour (password verification, denylist, token claims).
-      **The local Mockoon mock only returns static canned responses for these
-      three routes** — it does not verify credentials or issue real JWTs. Use
-      the real Spring Boot backend to exercise actual login/logout behaviour.
+      **The local Mockoon mock only returns static canned responses for
+      getBearerToken/login/logout** — it does not verify credentials or issue
+      real JWTs, and does not implement /api/auth/google at all. Use the real
+      Spring Boot backend to exercise actual login/logout/Google behaviour.
   version: 1.0.0
 
 servers:
@@ -111,6 +112,65 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "403":
           description: An access token (not an interim token) was used as the Bearer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/auth/google:
+    post:
+      tags: [Auth]
+      operationId: loginWithGoogle
+      summary: Upgrade an interim JWT to an access (session) JWT using a Google ID token
+      description: |
+        Alternative to POST /api/auth/login. Requires the interim JWT from
+        getBearerToken as a Bearer token, plus a Google-issued ID token (from
+        Android Credential Manager) in the body. See
+        specification/product/01-login.md ("Google Sign-In" section) and, for
+        full server behaviour, heavy-rental-spring-rest-api's AuthService.
+
+        Auto-provisions a ROLE_USER account on first sign-in with a given
+        email; links to an existing account by email otherwise.
+
+        **Not implemented on Mockoon/Prism** — this route does not exist on
+        the mock; test only against the real Spring Boot backend.
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+            example: "Bearer <interim-jwt>"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoogleLoginRequest"
+      responses:
+        "200":
+          description: Access JWT issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+              examples:
+                sample:
+                  $ref: "#/components/examples/LoginResponseExample"
+        "400":
+          description: Missing idToken
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing/invalid/expired interim token, or an invalid/unverifiable Google ID token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: An access token (not an interim token) was used as the Bearer, or the linked account is disabled
           content:
             application/json:
               schema:
@@ -343,6 +403,16 @@ components:
         password:
           type: string
           example: admin1234
+
+    GoogleLoginRequest:
+      type: object
+      required:
+        - idToken
+      properties:
+        idToken:
+          type: string
+          description: Google-issued ID token from Android Credential Manager (GetGoogleIdOption)
+          example: eyJhbGciOiJSUzI1NiJ9.google-id-token-example.signature
 
     LoginResponse:
       type: object
