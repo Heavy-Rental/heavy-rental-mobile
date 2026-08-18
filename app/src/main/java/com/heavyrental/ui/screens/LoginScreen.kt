@@ -226,16 +226,8 @@ fun LoginScreen(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                     horizontalAlignment = Alignment.Start
                 ) {
-                    Text("Default dev seed (API)", color = MutedForeground, style = MaterialTheme.typography.labelSmall)
-                    Spacer(modifier = Modifier.height(2.dp))
                     Text("admin@localhost", color = Foreground, style = MaterialTheme.typography.bodySmall)
                     Text("admin1234", color = Foreground, style = MaterialTheme.typography.bodySmall)
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        "Only valid on a freshly seeded API — see SPEC-auth-login-logout.md §7.4",
-                        color = MutedForeground,
-                        style = MaterialTheme.typography.labelSmall
-                    )
                 }
             }
         }
