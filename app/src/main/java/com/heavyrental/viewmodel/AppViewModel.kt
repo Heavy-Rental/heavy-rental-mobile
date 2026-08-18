@@ -92,6 +92,43 @@ class AppViewModel @JvmOverloads constructor(
         }
     }
 
+    fun loginWithGoogle(googleIdToken: String) {
+        if (_state.value.isLoggingIn) return
+
+        _state.value = _state.value.copy(isLoggingIn = true, loginError = null)
+
+        viewModelScope.launch {
+            try {
+                val response = authRepository.loginWithGoogle(googleIdToken)
+                _state.value = _state.value.copy(
+                    isLoggedIn = true,
+                    adminName = response.username.substringBefore("@").replaceFirstChar { it.uppercase() },
+                    currentScreen = AppScreen.HOME,
+                    loginError = null,
+                    isLoggingIn = false
+                )
+            } catch (e: HttpException) {
+                Log.e("AUTH_ERROR", e.message ?: "Google login failed", e)
+                val message = when (e.code()) {
+                    401 -> "Google sign-in was rejected. Please try again."
+                    else -> "Google sign-in failed (${e.code()}). Please try again."
+                }
+                _state.value = _state.value.copy(loginError = message, isLoggingIn = false)
+            } catch (e: IOException) {
+                Log.e("AUTH_ERROR", e.message ?: "Network error during Google login", e)
+                _state.value = _state.value.copy(
+                    loginError = "Could not reach the server. Please try again.",
+                    isLoggingIn = false
+                )
+            }
+        }
+    }
+
+    /** Lets LoginScreen surface a Credential Manager failure without going through a network call. */
+    fun setLoginError(message: String) {
+        _state.value = _state.value.copy(loginError = message, isLoggingIn = false)
+    }
+
     fun logout() {
         viewModelScope.launch {
             try {
