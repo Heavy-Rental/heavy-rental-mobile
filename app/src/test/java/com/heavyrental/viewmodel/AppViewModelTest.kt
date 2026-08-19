@@ -10,11 +10,12 @@ import com.heavyrental.data.repository.AuthRepository
 import com.heavyrental.data.repository.BookingRepository
 import com.heavyrental.navigation.AppScreen
 import com.heavyrental.network.dto.LoginResponse
+import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.just
 import io.mockk.mockk
-import io.mockk.Runs
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaType
@@ -38,6 +39,7 @@ import java.util.Base64
  * specification/product/05-offline-fallback.md — success/IOException apply locally,
  * HttpException/other Exception leave the booking unchanged.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class AppViewModelTest {
 
     @get:Rule

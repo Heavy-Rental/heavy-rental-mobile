@@ -284,6 +284,58 @@ function buildMockoonEnvironment(paths) {
   };
 }
 
+function loadExternalExample(externalValue) {
+  const abs = path.resolve(specsApi, externalValue);
+  const raw = fs.readFileSync(abs, "utf8");
+  return abs.endsWith(".json") ? JSON.parse(raw) : raw;
+}
+
+/**
+ * Inline every `#/components/examples/*` $ref, then drop that section.
+ *
+ * Prism cannot follow `externalValue`, and deleting `components.examples` while
+ * any $ref remains (e.g. POST /api/auth/google → LoginResponseExample) makes
+ * json-schema-ref-parser throw MissingPointerError on startup.
+ */
+function resolveComponentExampleRefs(doc) {
+  const resolved = {};
+  for (const [name, example] of Object.entries(doc.components?.examples ?? {})) {
+    const value =
+      example?.value !== undefined
+        ? example.value
+        : example?.externalValue
+          ? loadExternalExample(example.externalValue)
+          : undefined;
+    if (value === undefined) continue;
+    resolved[name] = {
+      ...(example.summary ? { summary: example.summary } : {}),
+      value,
+    };
+  }
+
+  const walk = (node) => {
+    if (Array.isArray(node)) {
+      node.forEach(walk);
+      return;
+    }
+    if (!node || typeof node !== "object") return;
+    for (const [key, child] of Object.entries(node)) {
+      const ref = child && typeof child === "object" ? child.$ref : undefined;
+      const match = typeof ref === "string" ? ref.match(/^#\/components\/examples\/(.+)$/) : null;
+      if (match && resolved[match[1]]) {
+        node[key] = { ...resolved[match[1]] };
+        continue;
+      }
+      walk(child);
+    }
+  };
+  walk(doc.paths);
+
+  if (doc.components?.examples) {
+    delete doc.components.examples;
+  }
+}
+
 function injectExamplesIntoOpenApi(doc, fixtures) {
   const ensureExample = (operation, status, example) => {
     const response = operation?.responses?.[status];
@@ -301,6 +353,7 @@ function injectExamplesIntoOpenApi(doc, fixtures) {
   };
 
   ensureExample(doc.paths?.["/api/auth/login"]?.post, "200", fixtures.loginResponse);
+  ensureExample(doc.paths?.["/api/auth/google"]?.post, "200", fixtures.loginResponse);
   ensureExample(doc.paths?.["/api/auth/logout"]?.post, "200", fixtures.logoutResponse);
   ensureExample(doc.paths?.["/api/bookings"]?.get, "200", fixtures.bookings);
   ensureExample(doc.paths?.["/api/bookings/{bookingId}"]?.get, "200", fixtures.bookingItem);
@@ -310,10 +363,7 @@ function injectExamplesIntoOpenApi(doc, fixtures) {
   ensureExample(doc.paths?.["/api/returns"]?.get, "200", fixtures.returns);
   ensureExample(doc.paths?.["/api/returns/{bookingId}/status"]?.patch, "200", fixtures.returnItem);
 
-  // Drop fragile component externalValue examples (replaced by inline above)
-  if (doc.components?.examples) {
-    delete doc.components.examples;
-  }
+  resolveComponentExampleRefs(doc);
 
   return doc;
 }

@@ -70,7 +70,17 @@ Checks:
 - `GET /api/deliveries`
 - `GET /api/returns`
 - `PATCH /api/deliveries/{id}/status`
-- `PATCH /api/returns/{id}/status`
+- `PATCH /api/returns/{id}/status` — also asserts ADR 003 (`returnNotes` echo). That behaviour is **Mockoon-only**. Against Prism, skip the echo check:
+
+```bash
+# PowerShell
+$env:MOCK_EXPECT_ECHO="0"; npm run mock:verify
+
+# bash
+MOCK_EXPECT_ECHO=0 npm run mock:verify
+```
+
+CI Mock Contract Tests start **Mockoon** (not Prism) so the echo assertion stays a gate.
 
 ## What gets generated
 

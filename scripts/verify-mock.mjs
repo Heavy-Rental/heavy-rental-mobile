@@ -1,6 +1,10 @@
 /**
  * Smoke-check that a mock server is answering the v1 client contract on :8081.
- * Usage: start mock:prism or mock:mockoon in another terminal, then npm run mock:verify
+ * Usage: start mock:mockoon or mock:prism in another terminal, then npm run mock:verify
+ *
+ * ADR 003 echo (returnNotes / bookingStatus) is Mockoon-only. Against Prism the
+ * echo assertion is skipped when MOCK_EXPECT_ECHO=0:
+ *   MOCK_EXPECT_ECHO=0 npm run mock:verify
  */
 const port = process.env.MOCK_PORT || "8081";
 const base = `http://127.0.0.1:${port}`;
@@ -40,18 +44,32 @@ async function main() {
     })
   );
 
-  // ADR 003: the return-status route echoes bookingStatus/returnNotes from the request body
-  // (Mockoon templating), unlike every other static-fixture route — assert that round-trip here.
+  // ADR 003: Mockoon echoes bookingStatus/returnNotes from the request body.
+  // Prism serves the static OpenAPI example (returnNotes: "") — skip the echo
+  // assertion when MOCK_EXPECT_ECHO=0. Default remains required (CI / Mockoon).
   const returnNotesSample = "Verified via mock:verify";
+  const expectEcho = process.env.MOCK_EXPECT_ECHO !== "0";
   const returnPatch = await check("PATCH", "/api/returns/8/status", {
     bookingStatus: "COMPLETED",
     returnNotes: returnNotesSample,
   });
-  if (returnPatch.ok && returnPatch.json?.returnNotes !== returnNotesSample) {
-    console.error(
-      `FAIL PATCH /api/returns/8/status did not echo returnNotes (got: ${JSON.stringify(returnPatch.json?.returnNotes)})`
-    );
-    returnPatch.ok = false;
+  if (returnPatch.ok) {
+    const echoed = returnPatch.json?.returnNotes;
+    if (typeof echoed !== "string") {
+      console.error(
+        `FAIL PATCH /api/returns/8/status response missing returnNotes (got: ${JSON.stringify(returnPatch.json)})`
+      );
+      returnPatch.ok = false;
+    } else if (expectEcho && echoed !== returnNotesSample) {
+      console.error(
+        `FAIL PATCH /api/returns/8/status did not echo returnNotes (got: ${JSON.stringify(echoed)})`
+      );
+      returnPatch.ok = false;
+    } else if (!expectEcho && echoed !== returnNotesSample) {
+      console.log(
+        `SKIP ADR 003 echo (MOCK_EXPECT_ECHO=0); returnNotes=${JSON.stringify(echoed)}`
+      );
+    }
   }
   results.push(returnPatch);
 
@@ -72,6 +90,6 @@ async function main() {
 main().catch((err) => {
   console.error(`Could not reach mock server at ${base}`);
   console.error(err.message);
-  console.error("Start it with: npm run mock:prism   OR   npm run mock:mockoon");
+  console.error("Start it with: npm run mock:mockoon   OR   npm run mock:prism");
   process.exit(1);
 });

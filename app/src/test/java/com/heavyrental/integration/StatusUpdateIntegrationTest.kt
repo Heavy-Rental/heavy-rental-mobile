@@ -7,6 +7,7 @@ import com.heavyrental.network.HeavyRentalApiService
 import com.heavyrental.viewmodel.AppViewModel
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.resetMain
@@ -17,7 +18,6 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
-import okhttp3.mockwebserver.SocketPolicy
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -38,6 +38,7 @@ import java.util.concurrent.TimeUnit
  * trip is genuine async I/O; assertions poll with a timeout instead of relying on coroutine-test
  * scheduler control.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class StatusUpdateIntegrationTest {
 
     private lateinit var server: MockWebServer
@@ -52,9 +53,15 @@ class StatusUpdateIntegrationTest {
         server.start()
 
         val json = Json { ignoreUnknownKeys = true; isLenient = true }
-        // retryOnConnectionFailure = false: keeps the DISCONNECT_AT_START scenario deterministic,
+        // retryOnConnectionFailure = false: keeps a dropped-connection scenario deterministic,
         // see BookingRepositoryIntegrationTest for why.
-        client = OkHttpClient.Builder().retryOnConnectionFailure(false).build()
+        client = OkHttpClient.Builder()
+            .retryOnConnectionFailure(false)
+            .connectTimeout(2, TimeUnit.SECONDS)
+            .readTimeout(2, TimeUnit.SECONDS)
+            .writeTimeout(2, TimeUnit.SECONDS)
+            .callTimeout(3, TimeUnit.SECONDS)
+            .build()
         val api = Retrofit.Builder()
             .baseUrl(server.url("/"))
             .client(client)
@@ -67,7 +74,7 @@ class StatusUpdateIntegrationTest {
 
     @After
     fun tearDown() {
-        server.shutdown()
+        runCatching { server.shutdown() }
         Dispatchers.resetMain()
     }
 
@@ -121,8 +128,12 @@ class StatusUpdateIntegrationTest {
         loadInitialDataAndAwaitReceipt()
         awaitUntil { viewModel.deliveries.value.any { it.bookingId == 3L } }
 
-        client.connectionPool.evictAll() // force a fresh connection so DISCONNECT_AT_START actually fires
-        server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START))
+        // DISCONNECT_AT_START is racy after keep-alive GETs (OkHttp can hang until
+        // its timeout, which is longer than awaitUntil). Shutting the server down
+        // yields an immediate connection-refused IOException — the actual "host
+        // unreachable" case from product/05-offline-fallback.md.
+        client.connectionPool.evictAll()
+        server.shutdown()
         viewModel.updateDeliveryStatus(3L, BookingStatus.MOBILISED)
         awaitUntil { viewModel.networkError.value != null }
 
