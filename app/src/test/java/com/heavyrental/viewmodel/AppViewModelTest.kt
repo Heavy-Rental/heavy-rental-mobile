@@ -11,6 +11,7 @@ import com.heavyrental.data.repository.BookingRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaType
@@ -31,6 +32,7 @@ import java.time.LocalDate
  * specification/product/05-offline-fallback.md — success/IOException apply locally,
  * HttpException/other Exception leave the booking unchanged.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class AppViewModelTest {
 
     @get:Rule
