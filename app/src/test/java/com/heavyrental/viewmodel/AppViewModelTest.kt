@@ -10,6 +10,7 @@ import com.heavyrental.data.repository.AuthRepository
 import com.heavyrental.data.repository.BookingRepository
 import com.heavyrental.navigation.AppScreen
 import com.heavyrental.network.dto.LoginResponse
+import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.just
