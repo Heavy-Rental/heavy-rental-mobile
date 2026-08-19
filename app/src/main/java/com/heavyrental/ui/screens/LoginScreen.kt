@@ -226,6 +226,13 @@ fun LoginScreen(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                     horizontalAlignment = Alignment.Start
                 ) {
+                    Text("Driver", color = MutedForeground, style = MaterialTheme.typography.labelSmall)
+                    Text("ah.tan@example.sg", color = Foreground, style = MaterialTheme.typography.bodySmall)
+                    Text("driver123", color = Foreground, style = MaterialTheme.typography.bodySmall)
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text("Admin", color = MutedForeground, style = MaterialTheme.typography.labelSmall)
                     Text("admin@localhost", color = Foreground, style = MaterialTheme.typography.bodySmall)
                     Text("admin1234", color = Foreground, style = MaterialTheme.typography.bodySmall)
                 }
