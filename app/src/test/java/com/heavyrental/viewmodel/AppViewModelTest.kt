@@ -8,8 +8,11 @@ import com.heavyrental.data.models.DeliveryItem
 import com.heavyrental.data.models.ReturnItem
 import com.heavyrental.data.repository.AuthRepository
 import com.heavyrental.data.repository.BookingRepository
+import com.heavyrental.navigation.AppScreen
+import com.heavyrental.network.dto.LoginResponse
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.just
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -17,6 +20,8 @@ import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Rule
@@ -25,6 +30,7 @@ import retrofit2.HttpException
 import retrofit2.Response
 import java.io.IOException
 import java.time.LocalDate
+import java.util.Base64
 
 /**
  * Covers the domain transition table in specification/domain/booking-status-machine.md
@@ -250,5 +256,120 @@ class AppViewModelTest {
 
         assertEquals(BookingStatus.CONFIRMED, viewModel.deliveries.value.first { it.bookingId == 3L }.bookingStatus)
         assertEquals("Could not sync status update — status unchanged. (boom)", viewModel.networkError.value)
+    }
+
+    // ── Staff-only gate (roles claim in the access JWT) ──────────────────
+    // The login endpoints are shared with the customer web app, so a ROLE_USER
+    // login succeeds at the API level and must be rejected here instead.
+
+    private val staffOnlyMessage =
+        "This app is for staff use only — contact your admin if you believe this is an error."
+
+    private fun loginResponse(vararg roles: String): LoginResponse {
+        val payload = Base64.getUrlEncoder().withoutPadding().encodeToString(
+            """{"sub":"someone@example.sg","roles":[${roles.joinToString(",") { "\"$it\"" }}]}"""
+                .toByteArray(Charsets.UTF_8)
+        )
+        return LoginResponse(
+            accessToken = "eyJhbGciOiJIUzI1NiJ9.$payload.sig",
+            tokenType = "Bearer",
+            expiresIn = 3600,
+            username = "someone@example.sg"
+        )
+    }
+
+    @Test
+    fun `admin login reaches home without revoking the token`() = runTest {
+        coEvery { authRepository.login("a@b.c", "pw") } returns loginResponse("ROLE_ADMIN")
+
+        viewModel.login("a@b.c", "pw")
+        advanceUntilIdle()
+
+        assertTrue(viewModel.state.value.isLoggedIn)
+        assertEquals(AppScreen.HOME, viewModel.state.value.currentScreen)
+        assertNull(viewModel.state.value.loginError)
+        coVerify(exactly = 0) { authRepository.logout() }
+    }
+
+    @Test
+    fun `driver login reaches home`() = runTest {
+        coEvery { authRepository.login("a@b.c", "pw") } returns loginResponse("ROLE_DRIVER")
+
+        viewModel.login("a@b.c", "pw")
+        advanceUntilIdle()
+
+        assertTrue(viewModel.state.value.isLoggedIn)
+        assertEquals(AppScreen.HOME, viewModel.state.value.currentScreen)
+    }
+
+    @Test
+    fun `customer login is rejected and the token is revoked`() = runTest {
+        coEvery { authRepository.login("a@b.c", "pw") } returns loginResponse("ROLE_USER")
+        coEvery { authRepository.logout() } just Runs
+
+        viewModel.login("a@b.c", "pw")
+        advanceUntilIdle()
+
+        assertFalse(viewModel.state.value.isLoggedIn)
+        assertEquals(AppScreen.LOGIN, viewModel.state.value.currentScreen)
+        assertEquals(staffOnlyMessage, viewModel.state.value.loginError)
+        assertFalse(viewModel.state.value.isLoggingIn)
+        coVerify(exactly = 1) { authRepository.logout() }
+    }
+
+    @Test
+    fun `customer Google login is rejected and the token is revoked`() = runTest {
+        coEvery { authRepository.loginWithGoogle("id-token") } returns loginResponse("ROLE_USER")
+        coEvery { authRepository.logout() } just Runs
+
+        viewModel.loginWithGoogle("id-token")
+        advanceUntilIdle()
+
+        assertFalse(viewModel.state.value.isLoggedIn)
+        assertEquals(staffOnlyMessage, viewModel.state.value.loginError)
+        coVerify(exactly = 1) { authRepository.logout() }
+    }
+
+    @Test
+    fun `admin Google login reaches home`() = runTest {
+        coEvery { authRepository.loginWithGoogle("id-token") } returns loginResponse("ROLE_ADMIN")
+
+        viewModel.loginWithGoogle("id-token")
+        advanceUntilIdle()
+
+        assertTrue(viewModel.state.value.isLoggedIn)
+        assertEquals(AppScreen.HOME, viewModel.state.value.currentScreen)
+        coVerify(exactly = 0) { authRepository.logout() }
+    }
+
+    @Test
+    fun `customer login is still rejected when the revoke call fails`() = runTest {
+        coEvery { authRepository.login("a@b.c", "pw") } returns loginResponse("ROLE_USER")
+        coEvery { authRepository.logout() } throws IOException("offline")
+
+        viewModel.login("a@b.c", "pw")
+        advanceUntilIdle()
+
+        assertFalse(viewModel.state.value.isLoggedIn)
+        assertEquals(AppScreen.LOGIN, viewModel.state.value.currentScreen)
+        assertEquals(staffOnlyMessage, viewModel.state.value.loginError)
+    }
+
+    @Test
+    fun `login with an undecodable token is rejected`() = runTest {
+        coEvery { authRepository.login("a@b.c", "pw") } returns LoginResponse(
+            accessToken = "not-a-jwt",
+            tokenType = "Bearer",
+            expiresIn = 3600,
+            username = "someone@example.sg"
+        )
+        coEvery { authRepository.logout() } just Runs
+
+        viewModel.login("a@b.c", "pw")
+        advanceUntilIdle()
+
+        assertFalse(viewModel.state.value.isLoggedIn)
+        assertEquals(staffOnlyMessage, viewModel.state.value.loginError)
+        coVerify(exactly = 1) { authRepository.logout() }
     }
 }

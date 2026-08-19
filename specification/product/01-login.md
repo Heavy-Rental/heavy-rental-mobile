@@ -10,18 +10,27 @@
 
 ## Summary
 
-Operators must authenticate before accessing Home, Deliveries, or Returns.
+Operators must authenticate before accessing Home, Deliveries, or Returns. Two paths are supported:
 
-In v1, authentication is an **HTTP interim → access JWT handshake** defined in OpenAPI:
+**A. Email/password**, an HTTP interim → access JWT handshake defined in OpenAPI:
 
 1. `GET /api/auth/getBearerToken` — mint a short-lived interim JWT (`text/plain`)
 2. `POST /api/auth/login` — upgrade interim JWT + email/password to an access (session) JWT
 3. Business calls use the access token as `Authorization: Bearer …` (via `AuthInterceptor`)
 4. `POST /api/auth/logout` — revoke the access token (best-effort from the client)
 
+**B. Google Sign-In** (HR-152), an alternative to step 2 above using a Google-issued ID token instead of a password:
+
+1. `GET /api/auth/getBearerToken` — same interim JWT as path A
+2. Android Credential Manager (`GetGoogleIdOption`) returns a Google ID token from the on-device account picker
+3. `POST /api/auth/google` — upgrade the interim JWT + Google ID token to the same shape of access (session) JWT as `POST /api/auth/login`
+4. Steps 3–4 of path A are unchanged (business calls, logout)
+
+Both paths converge on the same `LoginResponse` shape and the same in-memory session (`TokenSession`) — the rest of the app does not distinguish how a session was established.
+
 Tokens are held **in memory only** (`TokenSession`). There is no secure storage or automatic refresh in v1.
 
-**Default dev server (since HR-78):** the real Spring Boot backend on port **8080** — emulator base URL `http://10.0.2.2:8080/`. Mockoon/Prism on **8081** remains available via `USE_MOCK_SERVER = true` in `RetrofitInstance`. See [05-offline-fallback.md](05-offline-fallback.md) for the full table, [project-environment.md](../project-environment.md) and [`mocks/README.md`](../../mocks/README.md).
+**Default dev server (since HR-78):** the real Spring Boot backend on port **8080** — emulator base URL `http://10.0.2.2:8080/`. Mockoon/Prism on **8081** remains available via `USE_MOCK_SERVER = true` in `RetrofitInstance`. **Google Sign-In requires the real backend** — see Mockoon caveat below. See [05-offline-fallback.md](05-offline-fallback.md) for the full table, [project-environment.md](../project-environment.md) and [`mocks/README.md`](../../mocks/README.md).
 
 **Seeded accounts** (backend `data.sql`; `SPEC-auth-login-logout.md` §8.3):
 
@@ -34,13 +43,15 @@ Tokens are held **in memory only** (`TokenSession`). There is no secure storage 
 
 A seeded login returning `invalid_credentials` means the backend hasn't restarted since `data.sql` last changed — it upserts `users` on every boot.
 
+**Google test accounts:** the backend project (an OAuth "External" app in **Testing** publishing status) only authorizes accounts listed under Google Cloud Console → **Google Auth Platform → Audience → Test users**. Any other Google account is rejected during sign-in, not by this app but by Google itself, before an ID token is ever issued.
+
 ---
 
 ## Actors
 
 - **Admin / operator** — field or office staff managing mobilisation and returns
 
-v1 treats every authenticated user as a single operator. Authorisation beyond “has a valid access token” is out of scope for the client.
+v1 treats every authenticated user as a single operator. Authorisation beyond "has a valid access token" is out of scope for the client.
 
 > **Correction (HR-78).** The earlier wording — *“no roles API”* — is no longer accurate. The backend
 > has had a role model since before this branch: `User.role` is `USER` / `ADMIN` / `DRIVER`, and the
@@ -64,14 +75,22 @@ call. Two consequences worth recording:
 change), or decode the `roles` claim from the JWT the app already holds (client-only, no contract
 change). The second needs no coordination and is available today.
 
+### L2 — Google sign-in always provisions `ROLE_USER` *(HR-152)*
+
+A first-time Google sign-in auto-creates a backend `User` row with `role = USER`. There is no path
+from the client to obtain `ROLE_ADMIN`/`ROLE_DRIVER` via Google — those roles remain assigned only
+through the existing admin-only `POST /api/users` endpoint. If a Google account's email matches an
+**existing** user (e.g. one seeded with `ROLE_ADMIN`), Google sign-in links to that existing account
+and its existing role, rather than creating a second row.
+
 ---
 
 ## Credentials and environments
 
 | Environment | Credential behaviour | Display name after login |
 |-------------|----------------------|---------------------------|
-| **Mockoon / Prism (port 8081)** | Static canned responses — **does not** verify password or interim JWT. Typical requests receive 200. | From `LoginResponse.username` (fixture: `admin@localhost` → UI shows `Admin`) |
-| **Real Spring Boot backend** (optional; often host port `8080`) | Validates interim JWT + email/password (see backend auth specs referenced from OpenAPI). | From server `username` |
+| **Mockoon / Prism (port 8081)** | Static canned responses — **does not** verify password or interim JWT. Typical requests receive 200. **`/api/auth/google` is not implemented on Mockoon/Prism** — see Google Sign-In section below. | From `LoginResponse.username` (fixture: `admin@localhost` → UI shows `Admin`) |
+| **Real Spring Boot backend** (optional; often host port `8080`) | Validates interim JWT + email/password (see backend auth specs referenced from OpenAPI). Also the only environment that verifies real Google ID tokens. | From server `username` |
 | **Login UI dev hint** | Shows seed `admin@localhost` / `admin1234` (OpenAPI `LoginRequest` / example) | — |
 
 | Field | Dev seed (OpenAPI + UI hint) |
@@ -80,12 +99,69 @@ change). The second needs no coordination and is available today.
 | Password | `admin1234` |
 | Display name derivation | Local-part of `username` before `@`, first character uppercased (e.g. `admin@localhost` → `Admin`) |
 
-**Source of truth for request/response shapes:** OpenAPI schemas `LoginRequest`, `LoginResponse`, and examples under [`api/examples/`](../api/examples/).  
+**Source of truth for request/response shapes:** OpenAPI schemas `LoginRequest`, `GoogleLoginRequest`, `LoginResponse`, and examples under [`api/examples/`](../api/examples/).  
 **Do not** treat `MockDataRepository` as an auth credential store — it only seeds booking list data for offline fallback.
 
 ---
 
-## Acceptance criteria
+## Google Sign-In (HR-152)
+
+Google Sign-In is offered as a **"Continue with Google"** button on `LoginScreen`, alongside the existing email/password form. It uses Android's **Credential Manager** (`androidx.credentials`) with `GetGoogleIdOption` to obtain a Google-issued ID token from an on-device Google account, then exchanges it for an access JWT the same way the password flow exchanges credentials.
+
+### Requirements
+
+- Android device/emulator must have **Google Play Services** (a Google Play–enabled system image on emulators; a bare "Google APIs" or AOSP image does not support the account picker).
+- At least one Google account must be added on-device (**Settings → Passwords & accounts → Add account → Google**), and that account must be authorized as a test user in Google Cloud Console while the backend's OAuth app is in Testing status.
+- `WEB_CLIENT_ID` in `LoginScreen.kt` must match the **Web application** OAuth client configured in Google Cloud Console (this is the audience the backend's `GoogleTokenVerifier` checks against — a separate **Android** OAuth client, keyed by package name + signing-key SHA-1, authorizes the app itself but is never referenced in code).
+
+### Acceptance criteria
+
+```gherkin
+Feature: Google Sign-In
+
+  Scenario: Successful Google sign-in opens the home screen
+    Given the user is on the login screen
+    And the user is not logged in
+    And the auth API is reachable
+    And a Google account is available via Credential Manager
+    When the user taps "Continue with Google"
+    And the user selects a Google account from the picker
+    Then the client calls GET /api/auth/getBearerToken
+    And the client calls POST /api/auth/google with the interim Bearer and the Google ID token
+    And the access token is stored in the in-memory session
+    And the user is marked as logged in
+    And the current screen is HOME
+    And no login error is shown
+
+  Scenario: No Google account available on-device
+    Given the user is on the login screen
+    And no Google account is registered on the device (or Play Services rejects the request)
+    When the user taps "Continue with Google"
+    Then Credential Manager raises a GetCredentialException
+    And the login error "Google sign-in was cancelled or failed. Please try again." is shown
+    And no network call is made
+
+  Scenario: Backend rejects the Google ID token
+    Given the user is on the login screen
+    And Credential Manager returns a Google ID token
+    When the client calls POST /api/auth/google
+    And the auth API returns HTTP 401
+    Then the login error "Google sign-in was rejected. Please try again." is shown
+
+  Scenario: Google sign-in requires a real backend
+    Given USE_MOCK_SERVER is true (Mockoon/Prism target)
+    When the user taps "Continue with Google" and completes the account picker
+    Then POST /api/auth/google returns 404 (route not defined on the mock)
+    And this is expected — Google Sign-In is not exercisable against Mockoon/Prism, only against the real Spring Boot backend
+```
+
+### Mockoon / Prism caveat
+
+`POST /api/auth/google` is **not implemented** on Mockoon/Prism — unlike `getBearerToken`/`login`/`logout`, there is no canned response for it, and Google ID token verification cannot be meaningfully mocked without either a real Google-issued token or a stubbed verifier. Test Google Sign-In only against the real Spring Boot backend (`USE_MOCK_SERVER = false`).
+
+---
+
+## Acceptance criteria (email/password)
 
 ### Successful login (API available)
 
@@ -185,7 +261,8 @@ Password is sent as entered (no trim). Email **case sensitivity** is defined by 
 | Brand | "Heavy Rental" / "Administrator Portal" |
 | Email field | Email keyboard, next IME action |
 | Password field | Visibility toggle |
-| Error | Shown when `loginError` is non-null |
+| "Continue with Google" button | Below the Sign In button, separated by an "or" divider; disabled while `isLoggingIn` |
+| Error | Shown when `loginError` is non-null (shared between password and Google failures) |
 | Dev seed panel | Shows OpenAPI-aligned seed email/password for local backends |
 | Loading | Submit disabled / progress while `isLoggingIn` |
 
@@ -199,6 +276,8 @@ Password is sent as entered (no trim). Email **case sensitivity** is defined by 
 - Token refresh / sliding expiry UX
 - Offline or client-only login without calling the auth API
 - Multi-user account switching
+- Linking/unlinking a Google account from an existing password-based account via in-app UI (Google sign-in links by matching email automatically server-side; no client UI for this)
+- Google Workspace domain restriction (`hd` claim) — the backend's OAuth app is "External"/unrestricted
 
 ---
 
@@ -206,17 +285,19 @@ Password is sent as entered (no trim). Email **case sensitivity** is defined by 
 
 | Concern | Location |
 |---------|----------|
-| Login / logout orchestration | `viewmodel/AppViewModel.kt` — `login`, `logout` |
-| Interim → access handshake | `data/repository/AuthRepository.kt` |
+| Login / logout orchestration | `viewmodel/AppViewModel.kt` — `login`, `logout`, `loginWithGoogle`, `setLoginError` |
+| Interim → access handshake (password) | `data/repository/AuthRepository.kt` — `login` |
+| Interim → access handshake (Google) | `data/repository/AuthRepository.kt` — `loginWithGoogle` |
 | In-memory tokens | `network/TokenSession.kt` |
 | Access Bearer on business calls | `network/AuthInterceptor.kt` |
 | Paths | `network/dto/HeavyRentalApiService.kt` |
-| Auth DTOs | `network/dto/AuthDtos.kt` |
+| Auth DTOs | `network/dto/AuthDtos.kt` — `LoginRequest`, `GoogleLoginRequest`, `LoginResponse` |
 | Base URL (Spring Boot default) | `network/dto/RetrofitInstance.kt` — `http://10.0.2.2:8080/`; `USE_MOCK_SERVER = true` switches to `:8081` |
-| UI | `ui/screens/LoginScreen.kt` |
+| UI | `ui/screens/LoginScreen.kt` — password form + "Continue with Google" (Credential Manager) |
+| Google Web Client ID | `ui/screens/LoginScreen.kt` — `WEB_CLIENT_ID` constant |
 | Unauthenticated shell | `MainActivity` / `HeavyRentalApp` shows only `LoginScreen` when `!isLoggedIn` |
 | HTTP contract | `specification/api/heavyrental-openapi.yaml` |
-| Auth fixtures | `specification/api/examples/interim-token.txt`, `login-response.json`, `logout-response.json` |
+| Auth fixtures | `specification/api/examples/interim-token.txt`, `login-response.json`, `logout-response.json`, `google-login-request.json` |
 
 ---
 
@@ -226,3 +307,4 @@ Password is sent as entered (no trim). Email **case sensitivity** is defined by 
 - [05-offline-fallback.md](05-offline-fallback.md) — list/status fallback after login (not login itself)
 - [project-environment.md](../project-environment.md) — OpenAPI → Mockoon generation
 - [decisions/002-mock-strategy.md](../decisions/002-mock-strategy.md) — mock layers including canned auth
+- [decisions/004-google-sign-in.md](../decisions/004-google-sign-in.md) — why Credential Manager + backend-verified ID token, not Firebase Auth

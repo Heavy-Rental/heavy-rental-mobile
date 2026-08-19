@@ -28,6 +28,7 @@ Product auth behaviour: [product/01-login.md](../product/01-login.md).
 |--------|------|---------------------------|
 | `GET` | `/api/auth/getBearerToken` | Yes — login step 1 (`AuthRepository`) |
 | `POST` | `/api/auth/login` | Yes — login step 2 (`AuthRepository`) |
+| `POST` | `/api/auth/google` | Yes — Google Sign-In login step 2 (`AuthRepository.loginWithGoogle`); not on Mockoon |
 | `POST` | `/api/auth/logout` | Yes — logout (`AuthRepository`) |
 | `GET` | `/api/bookings` | Yes — shared booking state (`BookingRepository.getBookings`) |
 | `GET` | `/api/bookings/{bookingId}` | Declared in Retrofit; not used by UI v1 |
@@ -59,6 +60,7 @@ Product auth behaviour: [product/01-login.md](../product/01-login.md).
 |------|-----|
 | [`examples/interim-token.txt`](examples/interim-token.txt) | `GET /api/auth/getBearerToken` body (`text/plain`) |
 | [`examples/login-response.json`](examples/login-response.json) | `POST /api/auth/login` body |
+| [`examples/google-login-request.json`](examples/google-login-request.json) | `POST /api/auth/google` body (client is expected to send its own real Google ID token) |
 | [`examples/logout-response.json`](examples/logout-response.json) | `POST /api/auth/logout` body |
 | [`examples/bookings.json`](examples/bookings.json) | `GET /api/bookings` body |
 | [`examples/deliveries.json`](examples/deliveries.json) | `GET /api/deliveries` body |
