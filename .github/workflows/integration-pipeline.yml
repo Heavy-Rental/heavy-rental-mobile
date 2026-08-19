@@ -670,7 +670,9 @@ jobs:
           }
 
           MOCK_SCRIPT=""
-          for script in mock:prism mock:mockoon; do
+          # Prefer Mockoon so ADR 003 returnNotes echo stays a contract gate.
+          # Prism is the fallback (static OpenAPI examples; skip echo via MOCK_EXPECT_ECHO=0).
+          for script in mock:mockoon mock:prism; do
             if has_script "$script"; then
               MOCK_SCRIPT="$script"
               break
@@ -776,6 +778,8 @@ jobs:
         env:
           VERIFY_SCRIPT: ${{ steps.detect.outputs.verify_script }}
           MOCK_API_BASE_URL: ${{ env.MOCK_API_BASE_URL }}
+          # Prism cannot echo PATCH bodies; Mockoon can (ADR 003).
+          MOCK_EXPECT_ECHO: ${{ steps.detect.outputs.mock_script == 'mock:prism' && '0' || '1' }}
         run: |
           set -euo pipefail
           REPORT_DIR="${GITHUB_WORKSPACE}/test-reports"
