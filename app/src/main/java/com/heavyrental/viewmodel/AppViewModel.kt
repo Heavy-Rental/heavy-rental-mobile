@@ -14,6 +14,8 @@ import com.heavyrental.data.models.toDeliveryItems
 import com.heavyrental.data.models.toReturnItems
 import com.heavyrental.data.repository.AuthRepository
 import com.heavyrental.data.repository.BookingRepository
+import com.heavyrental.network.JwtClaims
+import com.heavyrental.network.dto.LoginResponse
 import androidx.lifecycle.viewModelScope
 import android.util.Log
 import kotlinx.coroutines.launch
@@ -65,14 +67,7 @@ class AppViewModel @JvmOverloads constructor(
 
         viewModelScope.launch {
             try {
-                val response = authRepository.login(email, password)
-                _state.value = _state.value.copy(
-                    isLoggedIn = true,
-                    adminName = response.username.substringBefore("@").replaceFirstChar { it.uppercase() },
-                    currentScreen = AppScreen.HOME,
-                    loginError = null,
-                    isLoggingIn = false
-                )
+                onLoginSuccess(authRepository.login(email, password))
             } catch (e: HttpException) {
                 Log.e("AUTH_ERROR", e.message ?: "Login failed", e)
                 val message = when (e.code()) {
@@ -99,14 +94,7 @@ class AppViewModel @JvmOverloads constructor(
 
         viewModelScope.launch {
             try {
-                val response = authRepository.loginWithGoogle(googleIdToken)
-                _state.value = _state.value.copy(
-                    isLoggedIn = true,
-                    adminName = response.username.substringBefore("@").replaceFirstChar { it.uppercase() },
-                    currentScreen = AppScreen.HOME,
-                    loginError = null,
-                    isLoggingIn = false
-                )
+                onLoginSuccess(authRepository.loginWithGoogle(googleIdToken))
             } catch (e: HttpException) {
                 Log.e("AUTH_ERROR", e.message ?: "Google login failed", e)
                 val message = when (e.code()) {
@@ -122,6 +110,41 @@ class AppViewModel @JvmOverloads constructor(
                 )
             }
         }
+    }
+
+    /**
+     * Shared success path for both login routes.
+     *
+     * /api/auth/login and /api/auth/google are shared with the customer web app, so the
+     * backend can't refuse a customer's login at the API level. The role isn't in the
+     * response body either — it's the `roles` claim inside the access token. A ROLE_USER
+     * who got this far would see a working-looking app full of empty lists (the backend
+     * 403s them on deliveries/returns), so revoke the token and say why instead.
+     */
+    private suspend fun onLoginSuccess(response: LoginResponse) {
+        if (JwtClaims.isStaff(response.accessToken)) {
+            _state.value = _state.value.copy(
+                isLoggedIn = true,
+                adminName = response.username.substringBefore("@").replaceFirstChar { it.uppercase() },
+                currentScreen = AppScreen.HOME,
+                loginError = null,
+                isLoggingIn = false
+            )
+            return
+        }
+
+        try {
+            authRepository.logout()
+        } catch (e: Exception) {
+            // Best-effort revoke — TokenSession is cleared locally regardless
+            // (see AuthRepository.logout), so no app screen can use this token.
+            Log.e("AUTH_ERROR", e.message ?: "Revoking non-staff token failed", e)
+        }
+
+        // Fresh AppState so isLoggedIn/currentScreen/isLoggingIn can't leak from the attempt.
+        _state.value = AppState(
+            loginError = "This app is for staff use only — contact your admin if you believe this is an error."
+        )
     }
 
     /** Lets LoginScreen surface a Credential Manager failure without going through a network call. */
