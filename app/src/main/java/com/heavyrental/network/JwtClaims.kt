@@ -21,6 +21,13 @@ object JwtClaims {
 
     private val ADMIN_ROLES = setOf("ROLE_ADMIN", "ROLE_DRIVER")
 
+    /**
+     * The customer-facing role. Backend-side this is the same `User.role = USER` used by the
+     * customer web app and public browse feature — there is no separate "customer" role in the
+     * data model, `ROLE_USER` fills that role. See specification/product/01-login.md §L1.
+     */
+    private const val CUSTOMER_ROLE = "ROLE_USER"
+
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     /** Roles from the token's `roles` claim, or empty if it can't be read. */
@@ -46,6 +53,13 @@ object JwtClaims {
 
     /** True only for staff accounts — ROLE_USER and anything unrecognised are rejected. */
     fun isStaff(jwt: String): Boolean = rolesOf(jwt).any { it in ADMIN_ROLES }
+
+    /**
+     * True only for customer accounts (`ROLE_USER`). Deliberately exclusive with [isStaff] —
+     * a token carrying both a staff role and ROLE_USER is treated as staff (see AppViewModel),
+     * so callers should check [isStaff] first.
+     */
+    fun isCustomer(jwt: String): Boolean = rolesOf(jwt).any { it == CUSTOMER_ROLE }
 
     /** JWT segments are base64url without padding; getUrlDecoder() requires it. */
     private fun padBase64(segment: String): String = when (segment.length % 4) {

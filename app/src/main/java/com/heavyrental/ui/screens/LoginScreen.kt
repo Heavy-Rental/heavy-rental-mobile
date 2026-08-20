@@ -85,7 +85,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             Text("Heavy Rental", style = MaterialTheme.typography.headlineLarge, color = Foreground)
-            Text("Administrator Portal", style = MaterialTheme.typography.bodyMedium, color = MutedForeground)
+            Text("Sign in to your account", style = MaterialTheme.typography.bodyMedium, color = MutedForeground)
 
             Spacer(modifier = Modifier.height(40.dp))
 
@@ -226,6 +226,12 @@ fun LoginScreen(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                     horizontalAlignment = Alignment.Start
                 ) {
+                    Text("Customer", color = MutedForeground, style = MaterialTheme.typography.labelSmall)
+                    Text("alex.tan@example.sg", color = Foreground, style = MaterialTheme.typography.bodySmall)
+                    Text("customer123", color = Foreground, style = MaterialTheme.typography.bodySmall)
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
                     Text("Driver", color = MutedForeground, style = MaterialTheme.typography.labelSmall)
                     Text("ah.tan@example.sg", color = Foreground, style = MaterialTheme.typography.bodySmall)
                     Text("driver123", color = Foreground, style = MaterialTheme.typography.bodySmall)

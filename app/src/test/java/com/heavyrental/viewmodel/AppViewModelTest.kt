@@ -304,18 +304,28 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `customer login is rejected and the token is revoked`() = runTest {
-        coEvery { authRepository.login("a@b.c", "pw") } returns loginResponse("ROLE_USER")
-        coEvery { authRepository.logout() } just Runs
+    fun `customer login reaches customer bookings without revoking the token`() = runTest {
+        coEvery { authRepository.login("alex@b.c", "customer123") } returns loginResponse("ROLE_USER")
+
+        viewModel.login("alex@b.c", "customer123")
+        advanceUntilIdle()
+
+        assertTrue(viewModel.state.value.isLoggedIn)
+        assertTrue(viewModel.state.value.isCustomer)
+        assertEquals(AppScreen.CUSTOMER_BOOKINGS, viewModel.state.value.currentScreen)
+        assertNull(viewModel.state.value.loginError)
+        assertFalse(viewModel.state.value.isLoggingIn)
+        coVerify(exactly = 0) { authRepository.logout() }
+    }
+
+    @Test
+    fun `staff login is not flagged as a customer session`() = runTest {
+        coEvery { authRepository.login("a@b.c", "pw") } returns loginResponse("ROLE_ADMIN")
 
         viewModel.login("a@b.c", "pw")
         advanceUntilIdle()
 
-        assertFalse(viewModel.state.value.isLoggedIn)
-        assertEquals(AppScreen.LOGIN, viewModel.state.value.currentScreen)
-        assertEquals(staffOnlyMessage, viewModel.state.value.loginError)
-        assertFalse(viewModel.state.value.isLoggingIn)
-        coVerify(exactly = 1) { authRepository.logout() }
+        assertFalse(viewModel.state.value.isCustomer)
     }
 
     @Test
@@ -344,8 +354,8 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `customer login is still rejected when the revoke call fails`() = runTest {
-        coEvery { authRepository.login("a@b.c", "pw") } returns loginResponse("ROLE_USER")
+    fun `unrecognised-role login is still rejected when the revoke call fails`() = runTest {
+        coEvery { authRepository.login("a@b.c", "pw") } returns loginResponse("ROLE_MYSTERY")
         coEvery { authRepository.logout() } throws IOException("offline")
 
         viewModel.login("a@b.c", "pw")
@@ -354,6 +364,24 @@ class AppViewModelTest {
         assertFalse(viewModel.state.value.isLoggedIn)
         assertEquals(AppScreen.LOGIN, viewModel.state.value.currentScreen)
         assertEquals(staffOnlyMessage, viewModel.state.value.loginError)
+    }
+
+    @Test
+    fun `customer login via Google is rejected, not routed to customer bookings`() = runTest {
+        // allowCustomer = false on the Google path (see loginWithGoogle) — a ROLE_USER
+        // token here is treated the same as any other non-staff login, not specially
+        // routed to CUSTOMER_BOOKINGS the way the password path is.
+        coEvery { authRepository.loginWithGoogle("id-token") } returns loginResponse("ROLE_USER")
+        coEvery { authRepository.logout() } just Runs
+
+        viewModel.loginWithGoogle("id-token")
+        advanceUntilIdle()
+
+        assertFalse(viewModel.state.value.isLoggedIn)
+        assertFalse(viewModel.state.value.isCustomer)
+        assertEquals(AppScreen.LOGIN, viewModel.state.value.currentScreen)
+        assertEquals(staffOnlyMessage, viewModel.state.value.loginError)
+        coVerify(exactly = 1) { authRepository.logout() }
     }
 
     @Test
@@ -372,5 +400,60 @@ class AppViewModelTest {
         assertFalse(viewModel.state.value.isLoggedIn)
         assertEquals(staffOnlyMessage, viewModel.state.value.loginError)
         coVerify(exactly = 1) { authRepository.logout() }
+    }
+
+    // ── Role-aware loadData (GET /api/bookings is customer-scoped server-side;
+    //    /api/deliveries and /api/returns are staff-only routes) ──────────────
+
+    @Test
+    fun `customer loadData only calls getBookings, never the staff-only endpoints`() = runTest {
+        coEvery { authRepository.login("alex@b.c", "customer123") } returns loginResponse("ROLE_USER")
+        coEvery { bookingRepository.getBookings() } returns listOf(booking(1L, BookingStatus.CONFIRMED))
+
+        viewModel.login("alex@b.c", "customer123")
+        advanceUntilIdle()
+
+        viewModel.loadData()
+        advanceUntilIdle()
+
+        assertEquals(1, viewModel.bookings.value.size)
+        coVerify(exactly = 1) { bookingRepository.getBookings() }
+        coVerify(exactly = 0) { bookingRepository.getTodaysDeliveries() }
+        coVerify(exactly = 0) { bookingRepository.getTodaysReturns() }
+    }
+
+    @Test
+    fun `staff loadData still calls bookings, deliveries, and returns`() = runTest {
+        coEvery { authRepository.login("a@b.c", "pw") } returns loginResponse("ROLE_ADMIN")
+        coEvery { bookingRepository.getBookings() } returns emptyList()
+        coEvery { bookingRepository.getTodaysDeliveries() } returns emptyList()
+        coEvery { bookingRepository.getTodaysReturns() } returns emptyList()
+
+        viewModel.login("a@b.c", "pw")
+        advanceUntilIdle()
+
+        viewModel.loadData()
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { bookingRepository.getBookings() }
+        coVerify(exactly = 1) { bookingRepository.getTodaysDeliveries() }
+        coVerify(exactly = 1) { bookingRepository.getTodaysReturns() }
+    }
+
+    @Test
+    fun `customer loadData failure surfaces the bookings-scoped fallback message`() = runTest {
+        coEvery { authRepository.login("alex@b.c", "customer123") } returns loginResponse("ROLE_USER")
+        coEvery { bookingRepository.getBookings() } throws IOException("host unreachable")
+
+        viewModel.login("alex@b.c", "customer123")
+        advanceUntilIdle()
+
+        viewModel.loadData()
+        advanceUntilIdle()
+
+        assertEquals(
+            "Could not reach API — showing mock data. (bookings: host unreachable)",
+            viewModel.networkError.value
+        )
     }
 }

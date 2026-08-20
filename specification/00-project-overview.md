@@ -34,8 +34,13 @@ The app is built with **Specification Driven Development (SDD)**: product scenar
 | Actor | Role |
 |-------|------|
 | **Admin / operator** | Field or office staff who log in, review today’s lists, mobilise deliveries, and complete returns |
+| **Customer** | The customer on a booking, who logs in with the same screen (password only) to view — never edit — their own bookings and each one's status |
 
-v1 has a **single** operator role (no roles API). Authentication is via the HTTP interim → access JWT flow. See [product/01-login.md](product/01-login.md).
+Authentication is via the HTTP interim → access JWT flow, shared by both actors. Which screen a
+session lands on is decided client-side from the access token's `roles` claim — see
+[product/01-login.md](product/01-login.md) "Role routing" and
+[product/06-customer-bookings.md](product/06-customer-bookings.md). Beyond that one staff/customer
+routing split, there is still no broader in-app roles/permissions model.
 
 ---
 
@@ -51,6 +56,7 @@ v1 has a **single** operator role (no roles API). Authentication is via the HTTP
 | Status sync | `PATCH` delivery/return status endpoints |
 | Offline / failure | Seed data + optimistic local status; error banner on list/status API failure (after login) |
 | Mocks | OpenAPI-driven Mockoon / Prism on `:8081`; in-app `MockDataRepository` for booking seed |
+| Customer bookings | Read-only `GET /api/bookings` list for `ROLE_USER` sessions, filterable by status; no edit/status-update affordance |
 
 ### Screens
 
@@ -61,6 +67,7 @@ v1 has a **single** operator role (no roles API). Authentication is via the HTTP
 | Deliveries | `AppScreen.DELIVERIES` | [product/03-deliveries.md](product/03-deliveries.md) |
 | Returns | `AppScreen.RETURNS` | [product/04-returns.md](product/04-returns.md) |
 | Offline / API failure | Shell banner | [product/05-offline-fallback.md](product/05-offline-fallback.md) |
+| Customer Bookings | `AppScreen.CUSTOMER_BOOKINGS` | [product/06-customer-bookings.md](product/06-customer-bookings.md) |
 
 ### Core domain (summary)
 
@@ -80,7 +87,7 @@ Details: [domain/booking-status-machine.md](domain/booking-status-machine.md), [
 
 Product-level exclusions (see also per-feature “Out of scope” sections):
 
-- Roles, MFA, password reset, biometric login, secure token storage
+- Any client-side roles/permissions model beyond the staff/customer login routing split (see Actors above); MFA, password reset, biometric login, secure token storage
 - Offline / client-only login without a reachable auth API
 - Historical (non-today) dashboards and analytics
 - Rescheduling dates, partial quantity, damage inspection, late fees
@@ -109,7 +116,8 @@ Product-level exclusions (see also per-feature “Out of scope” sections):
 ```text
 ┌─────────────────────────────────────────────────────────┐
 │  UI (Compose screens + HeavyRentalApp shell)            │
-│  Login · Home · Deliveries · Returns · error banner     │
+│  Login · Home · Deliveries · Returns                    │
+│  · Customer Bookings · error banner                     │
 └───────────────────────────┬─────────────────────────────┘
                             │
 ┌───────────────────────────▼─────────────────────────────┐
@@ -220,4 +228,5 @@ Mock servers and regeneration: [api/README.md](api/README.md), [project-environm
 | Domain models / filters | `data/models/*` |
 | Booking seed / offline fallback | `data/repository/MockDataRepository.kt` |
 | Auth handshake | `data/repository/AuthRepository.kt`, `network/TokenSession.kt`, `network/AuthInterceptor.kt` |
+| Role routing (staff vs. customer) | `network/JwtClaims.kt`, `viewmodel/AppViewModel.kt` — `onLoginSuccess` |
 | Network | `network/dto/RetrofitInstance.kt`, `HeavyRentalApiService`, `BookingRepository` |
