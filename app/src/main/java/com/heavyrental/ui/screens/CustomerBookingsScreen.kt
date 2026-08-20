@@ -24,18 +24,18 @@ import com.heavyrental.data.models.BookingStatus
 import com.heavyrental.ui.theme.*
 import java.time.format.DateTimeFormatter
 
-private enum class CustomerBookingFilter { ALL, ACTIVE, COMPLETED, CANCELLED }
+private enum class CustomerBookingFilter { ALL, PENDING, CONFIRMED, MOBILISED, COMPLETED, CANCELLED }
 
 /**
- * Statuses that count as "active" for a customer's own filter — mirrors the backend's
- * Booking.ACTIVE_STATUSES (SPEC-entity-repository.md) so "Active" here means the same thing
- * it means server-side: a booking that still holds equipment.
+ * The two "not yet confirmed" statuses collapse into a single "Pending" filter — from a
+ * customer's point of view, PENDING_DEPOSIT (deposit not yet paid) and PENDING_CONFIRMED
+ * (deposit paid, awaiting staff confirmation) are both just "nothing to do but wait", so
+ * they're one chip. CONFIRMED and MOBILISED are common enough, and distinct enough in
+ * meaning, to each get their own chip instead of being folded into a broader "Active" group.
  */
-private val ACTIVE_STATUSES = setOf(
+private val PENDING_STATUSES = setOf(
     BookingStatus.PENDING_DEPOSIT,
-    BookingStatus.PENDING_CONFIRMED,
-    BookingStatus.CONFIRMED,
-    BookingStatus.MOBILISED
+    BookingStatus.PENDING_CONFIRMED
 )
 
 /**
@@ -44,6 +44,10 @@ private val ACTIVE_STATUSES = setOf(
  * (BookingService.getBookings) — this screen never offers a way to edit, mobilise, or
  * complete a booking; it only ever displays bookingStatus.
  */
+// FlowRow/FlowColumn no longer require this opt-in as of Compose Foundation 1.7.0 (this
+// project's BOM), but the annotation is harmless if redundant — kept for safety against
+// a lower Foundation version resolving transitively.
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CustomerBookingsScreen(
     customerName: String,
@@ -56,10 +60,12 @@ fun CustomerBookingsScreen(
     val visibleBookings = remember(bookings, selectedFilter) {
         when (selectedFilter) {
             CustomerBookingFilter.ALL -> bookings
-            CustomerBookingFilter.ACTIVE -> bookings.filter { it.bookingStatus in ACTIVE_STATUSES }
+            CustomerBookingFilter.PENDING -> bookings.filter { it.bookingStatus in PENDING_STATUSES }
+            CustomerBookingFilter.CONFIRMED -> bookings.filter { it.bookingStatus == BookingStatus.CONFIRMED }
+            CustomerBookingFilter.MOBILISED -> bookings.filter { it.bookingStatus == BookingStatus.MOBILISED }
             CustomerBookingFilter.COMPLETED -> bookings.filter { it.bookingStatus == BookingStatus.COMPLETED }
             CustomerBookingFilter.CANCELLED -> bookings.filter { it.bookingStatus == BookingStatus.CANCELLED }
-        }.sortedByDescending { it.startDate }
+        }.sortedByDescending { it.bookingId }
     }
 
     Column(
@@ -95,12 +101,17 @@ fun CustomerBookingsScreen(
 
         HorizontalDivider(color = Border)
 
-        // Filter chips
-        Row(
+        // Filter chips — six of them (All, Pending, Confirmed, Mobilised, Completed,
+        // Cancelled) don't reliably fit one unwrapped row on narrow phones. Rather than
+        // scroll (which hid Completed/Cancelled off-screen with no visual cue they existed),
+        // this wraps onto a second line — every chip stays visible and static, no gesture
+        // needed to discover any of them.
+        FlowRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             CustomerFilterChip(
                 label    = "All",
@@ -110,11 +121,25 @@ fun CustomerBookingsScreen(
                 onClick  = { selectedFilter = CustomerBookingFilter.ALL }
             )
             CustomerFilterChip(
-                label    = "Active",
-                count    = bookings.count { it.bookingStatus in ACTIVE_STATUSES },
-                selected = selectedFilter == CustomerBookingFilter.ACTIVE,
+                label    = "Pending",
+                count    = bookings.count { it.bookingStatus in PENDING_STATUSES },
+                selected = selectedFilter == CustomerBookingFilter.PENDING,
+                color    = AmberAccent,
+                onClick  = { selectedFilter = CustomerBookingFilter.PENDING }
+            )
+            CustomerFilterChip(
+                label    = "Confirmed",
+                count    = bookings.count { it.bookingStatus == BookingStatus.CONFIRMED },
+                selected = selectedFilter == CustomerBookingFilter.CONFIRMED,
                 color    = BlueAccent,
-                onClick  = { selectedFilter = CustomerBookingFilter.ACTIVE }
+                onClick  = { selectedFilter = CustomerBookingFilter.CONFIRMED }
+            )
+            CustomerFilterChip(
+                label    = "Mobilised",
+                count    = bookings.count { it.bookingStatus == BookingStatus.MOBILISED },
+                selected = selectedFilter == CustomerBookingFilter.MOBILISED,
+                color    = Primary,
+                onClick  = { selectedFilter = CustomerBookingFilter.MOBILISED }
             )
             CustomerFilterChip(
                 label    = "Completed",

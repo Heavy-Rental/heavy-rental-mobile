@@ -1,7 +1,10 @@
 package com.heavyrental.ui.screens
 
-import androidx.compose.ui.test.assertDoesNotExist
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
@@ -9,6 +12,7 @@ import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import com.heavyrental.data.models.AssetLine
 import com.heavyrental.data.models.Booking
 import com.heavyrental.data.models.BookingStatus
@@ -29,7 +33,15 @@ import java.time.LocalDate
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [33])
+// Unlike DeliveryListScreenTest/ReturnListScreenTest (which only ever render a single list
+// item), several tests here render 3-6 booking cards at once. Robolectric's default virtual
+// screen (no qualifiers set) is too short for that many cards under the top bar + six-chip
+// FlowRow, so LazyColumn never composes the ones that fall outside it — they're simply absent
+// from the semantics tree, not merely off-screen. h891dp (a normal phone height) was enough
+// for the 3-4 card tests but still too short for the 6-status test, so this uses a much taller
+// virtual screen — purely a test fixture, not a real device size, so there's no downside to
+// making it generous enough that card count will never again be the constraint.
+@Config(sdk = [33], qualifiers = "w411dp-h2000dp")
 class CustomerBookingsScreenTest {
 
     @get:Rule
@@ -62,7 +74,9 @@ class CustomerBookingsScreenTest {
         }
 
         composeTestRule.onNodeWithText("Booking #1").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Confirmed").assertIsDisplayed()
+        // "Confirmed" matches both the filter chip and this booking's status badge —
+        // .onLast() is the badge (chips render before the list in the tree).
+        composeTestRule.onAllNodesWithText("Confirmed").onLast().assertIsDisplayed()
         composeTestRule.onNodeWithText("JLG 460SJ Boom Lift").assertIsDisplayed()
         composeTestRule.onNodeWithText("20 Jurong Port Road, Singapore 619094").assertIsDisplayed()
     }
@@ -110,13 +124,36 @@ class CustomerBookingsScreenTest {
             )
         }
 
+        // Six cards is enough that whether they all fit one screen's worth of LazyColumn
+        // composition is not portable — it depends on exact text/line-height measurement,
+        // which Robolectric's NATIVE graphics mode doesn't guarantee identically across
+        // host platforms (this passed locally on Windows but failed in CI on Linux at a
+        // fixed virtual screen size). Scrolling the list to each node before asserting on
+        // it sidesteps that entirely: it works regardless of viewport size or how many
+        // cards happen to already be composed.
+        val list = composeTestRule.onNode(hasScrollAction())
+
+        list.performScrollToNode(hasText("Pending Deposit"))
         composeTestRule.onNodeWithText("Pending Deposit").assertIsDisplayed()
+
+        list.performScrollToNode(hasText("Pending Confirmation"))
         composeTestRule.onNodeWithText("Pending Confirmation").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Confirmed").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Mobilised").assertIsDisplayed()
-        // "Completed" and "Cancelled" also label filter chips, so two nodes match each —
-        // .onLast() is the card's status badge (chips render before the list in the tree).
+
+        // "Confirmed", "Mobilised", "Completed", and "Cancelled" also label filter chips, so
+        // two nodes match each — .onLast() is the card's status badge (chips render before
+        // the list in the tree). "Pending Deposit"/"Pending Confirmation" have no such
+        // collision: the chip that covers both is labelled just "Pending". performScrollToNode
+        // only searches descendants of the list, so it can't be confused by the chip either.
+        list.performScrollToNode(hasText("Confirmed"))
+        composeTestRule.onAllNodesWithText("Confirmed").onLast().assertIsDisplayed()
+
+        list.performScrollToNode(hasText("Mobilised"))
+        composeTestRule.onAllNodesWithText("Mobilised").onLast().assertIsDisplayed()
+
+        list.performScrollToNode(hasText("Completed"))
         composeTestRule.onAllNodesWithText("Completed").onLast().assertIsDisplayed()
+
+        list.performScrollToNode(hasText("Cancelled"))
         composeTestRule.onAllNodesWithText("Cancelled").onLast().assertIsDisplayed()
     }
 
@@ -140,6 +177,75 @@ class CustomerBookingsScreenTest {
         }
 
         composeTestRule.onNodeWithText("You don't have any bookings yet").assertIsDisplayed()
+    }
+
+    @Test
+    fun `Pending filter groups PENDING_DEPOSIT and PENDING_CONFIRMED, excludes everything else`() {
+        composeTestRule.setContent {
+            CustomerBookingsScreen(
+                customerName = "Alex",
+                bookings = listOf(
+                    booking(1L, BookingStatus.PENDING_DEPOSIT),
+                    booking(2L, BookingStatus.PENDING_CONFIRMED),
+                    booking(3L, BookingStatus.CONFIRMED),
+                    booking(4L, BookingStatus.MOBILISED)
+                ),
+                onLogout = {}
+            )
+        }
+
+        composeTestRule.onNodeWithText("Pending").performClick()
+
+        composeTestRule.onNodeWithText("Booking #1").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Booking #2").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Booking #3").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Booking #4").assertDoesNotExist()
+    }
+
+    @Test
+    fun `Confirmed filter excludes Mobilised, and vice versa`() {
+        composeTestRule.setContent {
+            CustomerBookingsScreen(
+                customerName = "Alex",
+                bookings = listOf(
+                    booking(1L, BookingStatus.CONFIRMED),
+                    booking(2L, BookingStatus.MOBILISED)
+                ),
+                onLogout = {}
+            )
+        }
+
+        // "Confirmed" matches the chip and booking #1's badge — .onFirst() is the chip.
+        composeTestRule.onAllNodesWithText("Confirmed").onFirst().performClick()
+        composeTestRule.onNodeWithText("Booking #1").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Booking #2").assertDoesNotExist()
+
+        composeTestRule.onAllNodesWithText("Mobilised").onFirst().performClick()
+        composeTestRule.onNodeWithText("Booking #2").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Booking #1").assertDoesNotExist()
+    }
+
+    @Test
+    fun `bookings render in descending bookingId order, regardless of input order`() {
+        composeTestRule.setContent {
+            CustomerBookingsScreen(
+                customerName = "Alex",
+                // Deliberately unsorted input — the screen is responsible for ordering,
+                // not whatever order GET /api/bookings happens to return.
+                bookings = listOf(
+                    booking(5L, BookingStatus.CONFIRMED),
+                    booking(80L, BookingStatus.PENDING_CONFIRMED),
+                    booking(23L, BookingStatus.MOBILISED)
+                ),
+                onLogout = {}
+            )
+        }
+
+        val cards = composeTestRule.onAllNodesWithText("Booking #", substring = true)
+        cards.assertCountEquals(3)
+        cards[0].assertTextEquals("Booking #80")
+        cards[1].assertTextEquals("Booking #23")
+        cards[2].assertTextEquals("Booking #5")
     }
 
     @Test
