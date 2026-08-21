@@ -25,7 +25,10 @@ import java.io.IOException
 
 data class AppState(
     val isLoggedIn: Boolean = false,
-    val adminName: String = "",
+    /** Derived from LoginResponse.username for both staff and customer sessions. */
+    val displayName: String = "",
+    /** True for a ROLE_USER session (see JwtClaims.isCustomer) — routes to the customer flow. */
+    val isCustomer: Boolean = false,
     val currentScreen: AppScreen = AppScreen.LOGIN,
     val loginError: String? = null,
     val isLoggingIn: Boolean = false
@@ -67,7 +70,7 @@ class AppViewModel @JvmOverloads constructor(
 
         viewModelScope.launch {
             try {
-                onLoginSuccess(authRepository.login(email, password))
+                onLoginSuccess(authRepository.login(email, password), allowCustomer = true)
             } catch (e: HttpException) {
                 Log.e("AUTH_ERROR", e.message ?: "Login failed", e)
                 val message = when (e.code()) {
@@ -94,7 +97,12 @@ class AppViewModel @JvmOverloads constructor(
 
         viewModelScope.launch {
             try {
-                onLoginSuccess(authRepository.loginWithGoogle(googleIdToken))
+                // allowCustomer = false: Google Sign-In stays a staff-only path for now (its
+                // auto-provisioning always assigns ROLE_DRIVER — see AuthService on the backend —
+                // so a ROLE_USER here would only occur if an existing customer account happens to
+                // share an email with a Google account; treat it the same as any other non-staff
+                // login rather than special-casing it).
+                onLoginSuccess(authRepository.loginWithGoogle(googleIdToken), allowCustomer = false)
             } catch (e: HttpException) {
                 Log.e("AUTH_ERROR", e.message ?: "Google login failed", e)
                 val message = when (e.code()) {
@@ -115,18 +123,41 @@ class AppViewModel @JvmOverloads constructor(
     /**
      * Shared success path for both login routes.
      *
-     * /api/auth/login and /api/auth/google are shared with the customer web app, so the
-     * backend can't refuse a customer's login at the API level. The role isn't in the
-     * response body either — it's the `roles` claim inside the access token. A ROLE_USER
-     * who got this far would see a working-looking app full of empty lists (the backend
-     * 403s them on deliveries/returns), so revoke the token and say why instead.
+     * /api/auth/login and /api/auth/google are shared with the customer web app (and, as of the
+     * customer-login-bookings-view feature, this app too), so the backend can't refuse a
+     * customer's login at the API level. The role isn't in the response body either — it's the
+     * `roles` claim inside the access token, decoded via [JwtClaims].
+     *
+     * Three outcomes:
+     *  - staff (ROLE_ADMIN/ROLE_DRIVER) -> HOME, the existing ops flow.
+     *  - customer (ROLE_USER), only when [allowCustomer] is true -> CUSTOMER_BOOKINGS, a
+     *    read-only view of the caller's own bookings.
+     *  - anything else (including a ROLE_USER token when [allowCustomer] is false, e.g. from
+     *    the Google path — see loginWithGoogle) -> the token is revoked and login is refused,
+     *    so the app doesn't sit on a working-looking screen full of endpoints that 403 it.
      */
-    private suspend fun onLoginSuccess(response: LoginResponse) {
-        if (JwtClaims.isStaff(response.accessToken)) {
+    private suspend fun onLoginSuccess(response: LoginResponse, allowCustomer: Boolean) {
+        val accessToken = response.accessToken
+        val displayName = response.username.substringBefore("@").replaceFirstChar { it.uppercase() }
+
+        if (JwtClaims.isStaff(accessToken)) {
             _state.value = _state.value.copy(
                 isLoggedIn = true,
-                adminName = response.username.substringBefore("@").replaceFirstChar { it.uppercase() },
+                displayName = displayName,
+                isCustomer = false,
                 currentScreen = AppScreen.HOME,
+                loginError = null,
+                isLoggingIn = false
+            )
+            return
+        }
+
+        if (allowCustomer && JwtClaims.isCustomer(accessToken)) {
+            _state.value = _state.value.copy(
+                isLoggedIn = true,
+                displayName = displayName,
+                isCustomer = true,
+                currentScreen = AppScreen.CUSTOMER_BOOKINGS,
                 loginError = null,
                 isLoggingIn = false
             )
@@ -138,7 +169,7 @@ class AppViewModel @JvmOverloads constructor(
         } catch (e: Exception) {
             // Best-effort revoke — TokenSession is cleared locally regardless
             // (see AuthRepository.logout), so no app screen can use this token.
-            Log.e("AUTH_ERROR", e.message ?: "Revoking non-staff token failed", e)
+            Log.e("AUTH_ERROR", e.message ?: "Revoking rejected token failed", e)
         }
 
         // Fresh AppState so isLoggedIn/currentScreen/isLoggingIn can't leak from the attempt.
@@ -271,8 +302,33 @@ class AppViewModel @JvmOverloads constructor(
      * Loads list screens from dedicated endpoints (GET /api/deliveries, GET /api/returns)
      * and optionally GET /api/bookings. Seed data remains if a call fails.
      * See specification/product/03-deliveries.md and 05-offline-fallback.md.
+     *
+     * Customers (ROLE_USER) only ever call GET /api/bookings — /api/deliveries and
+     * /api/returns are staff-only routes (SecurityConfig) that would 403 for them, and
+     * GET /api/bookings is already scoped server-side to the caller's own bookings
+     * (BookingService.getBookings), so no separate "my bookings" endpoint is needed.
      */
     fun loadData() {
+        if (_state.value.isCustomer) {
+            loadCustomerBookings()
+        } else {
+            loadStaffData()
+        }
+    }
+
+    private fun loadCustomerBookings() {
+        viewModelScope.launch {
+            try {
+                _bookings.value = bookingRepository.getBookings()
+                _networkError.value = null
+            } catch (e: Exception) {
+                Log.e("API_ERROR", e.message ?: "Bookings load failed", e)
+                _networkError.value = "Could not reach API — showing mock data. (bookings: ${e.message})"
+            }
+        }
+    }
+
+    private fun loadStaffData() {
         viewModelScope.launch {
             val errors = mutableListOf<String>()
 

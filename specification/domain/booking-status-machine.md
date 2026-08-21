@@ -160,12 +160,21 @@ error copy shown to the operator.
 
 ## Relationship to lists
 
-Status alone does not place a booking on a screen; **dates** also apply:
+Status alone does not place a booking on a screen; **dates** also apply — for the two staff
+lists, that is:
 
 - Deliveries: today + (`CONFIRMED` | `MOBILISED`) — see [list-filters.md](list-filters.md)
 - Returns: today + (`MOBILISED` | `COMPLETED`) — see [list-filters.md](list-filters.md)
 
 A booking can appear on **both** lists only if `startDate` and `endDate` are both today and status is `MOBILISED` (edge case; mock data usually uses multi-day hires).
+
+**The customer bookings list is the exception to "dates also apply."** It has no date
+membership filter at all — every status, including the four display-only ones, is shown for
+every booking `GET /api/bookings` scopes to that customer, filterable (not excluded) by a
+status chip. See [list-filters.md](list-filters.md) "Customer booking list filter" and
+[product/06-customer-bookings.md](../product/06-customer-bookings.md). This screen has no
+transition logic of its own — it renders `bookingStatus` exactly as returned and drives none of
+the transitions documented above.
 
 ---
 

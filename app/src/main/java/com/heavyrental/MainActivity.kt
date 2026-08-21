@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.heavyrental.data.models.BookingStatus
 import com.heavyrental.navigation.AppScreen
+import com.heavyrental.ui.screens.CustomerBookingsScreen
 import com.heavyrental.ui.screens.DeliveryListScreen
 import com.heavyrental.ui.screens.HomeScreen
 import com.heavyrental.ui.screens.LoginScreen
@@ -48,6 +49,7 @@ class MainActivity : ComponentActivity() {
 fun HeavyRentalApp() {
     val vm: AppViewModel = viewModel()
     val state      by vm.state.collectAsState()
+    val bookings   by vm.bookings.collectAsState()
     val deliveries by vm.deliveries.collectAsState()
     val returns    by vm.returns.collectAsState()
     val networkError by vm.networkError.collectAsState()
@@ -87,35 +89,39 @@ fun HeavyRentalApp() {
                 }
             }
         },
+        // Customers have exactly one screen (CUSTOMER_BOOKINGS) — no tabs to switch between,
+        // so the staff bottom nav (Home/Deliveries/Returns) is skipped entirely for them.
         bottomBar = {
-            NavigationBar(containerColor = Surface, tonalElevation = 0.dp) {
-                NavigationBarItem(
-                    selected = state.currentScreen == AppScreen.HOME,
-                    onClick  = { vm.navigate(AppScreen.HOME) },
-                    icon     = { Icon(Icons.Default.Home, contentDescription = "Home") },
-                    label    = { Text("Home") },
-                    colors   = tabColors()
-                )
-                NavigationBarItem(
-                    selected = state.currentScreen == AppScreen.DELIVERIES,
-                    onClick  = { vm.navigate(AppScreen.DELIVERIES) },
-                    icon     = { Icon(Icons.Default.LocalShipping, contentDescription = "Deliveries") },
-                    label    = { Text("Deliveries") },
-                    colors   = tabColors()
-                )
-                NavigationBarItem(
-                    selected = state.currentScreen == AppScreen.RETURNS,
-                    onClick  = { vm.navigate(AppScreen.RETURNS) },
-                    icon     = { Icon(Icons.Default.Replay, contentDescription = "Returns") },
-                    label    = { Text("Returns") },
-                    colors   = tabColors()
-                )
+            if (!state.isCustomer) {
+                NavigationBar(containerColor = Surface, tonalElevation = 0.dp) {
+                    NavigationBarItem(
+                        selected = state.currentScreen == AppScreen.HOME,
+                        onClick  = { vm.navigate(AppScreen.HOME) },
+                        icon     = { Icon(Icons.Default.Home, contentDescription = "Home") },
+                        label    = { Text("Home") },
+                        colors   = tabColors()
+                    )
+                    NavigationBarItem(
+                        selected = state.currentScreen == AppScreen.DELIVERIES,
+                        onClick  = { vm.navigate(AppScreen.DELIVERIES) },
+                        icon     = { Icon(Icons.Default.LocalShipping, contentDescription = "Deliveries") },
+                        label    = { Text("Deliveries") },
+                        colors   = tabColors()
+                    )
+                    NavigationBarItem(
+                        selected = state.currentScreen == AppScreen.RETURNS,
+                        onClick  = { vm.navigate(AppScreen.RETURNS) },
+                        icon     = { Icon(Icons.Default.Replay, contentDescription = "Returns") },
+                        label    = { Text("Returns") },
+                        colors   = tabColors()
+                    )
+                }
             }
         }
     ) { innerPadding ->
         when (state.currentScreen) {
             AppScreen.HOME -> HomeScreen(
-                adminName              = state.adminName,
+                adminName              = state.displayName,
                 deliveryCount          = deliveries.size,
                 returnCount            = returns.size,
                 confirmedCount         = deliveries.count { it.bookingStatus == BookingStatus.CONFIRMED },
@@ -134,6 +140,12 @@ fun HeavyRentalApp() {
                 returns        = returns,
                 onStatusUpdate = { id, notes -> vm.updateReturnStatus(id, BookingStatus.COMPLETED, notes) },
                 modifier       = Modifier.padding(innerPadding)
+            )
+            AppScreen.CUSTOMER_BOOKINGS -> CustomerBookingsScreen(
+                customerName = state.displayName,
+                bookings     = bookings,
+                onLogout     = { vm.logout() },
+                modifier     = Modifier.padding(innerPadding)
             )
             AppScreen.LOGIN -> { /* unreachable */ }
         }

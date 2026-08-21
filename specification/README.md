@@ -42,6 +42,7 @@ When layers conflict, resolve in this order: **product intent â†’ domain rules â
 | Deliveries | `AppScreen.DELIVERIES` | [product/03-deliveries.md](product/03-deliveries.md) | `ui/screens/DeliveryListScreen.kt` |
 | Returns | `AppScreen.RETURNS` | [product/04-returns.md](product/04-returns.md) | `ui/screens/ReturnListScreen.kt` |
 | Offline / API failure | banner in shell | [product/05-offline-fallback.md](product/05-offline-fallback.md) | `MainActivity` / `AppViewModel` |
+| Customer Bookings | `AppScreen.CUSTOMER_BOOKINGS` | [product/06-customer-bookings.md](product/06-customer-bookings.md) | `ui/screens/CustomerBookingsScreen.kt` |
 
 **Package root:** `com.heavyrental`
 
@@ -129,6 +130,7 @@ specification/
     03-deliveries.md
     04-returns.md
     05-offline-fallback.md
+    06-customer-bookings.md
   domain/
     booking-status-machine.md
     list-filters.md

@@ -2,7 +2,7 @@
 
 **Status:** Implemented (v1)  
 **Screens:** `LoginScreen`  
-**Navigation:** `AppScreen.LOGIN` → success navigates to `AppScreen.HOME`  
+**Navigation:** `AppScreen.LOGIN` → success navigates to `AppScreen.HOME` (staff) or `AppScreen.CUSTOMER_BOOKINGS` (customer) — see **Role routing** below  
 **Code root:** `com.heavyrental`  
 **API contract:** [`api/heavyrental-openapi.yaml`](../api/heavyrental-openapi.yaml) (Auth tag)
 
@@ -10,7 +10,8 @@
 
 ## Summary
 
-Operators must authenticate before accessing Home, Deliveries, or Returns. Two paths are supported:
+Every user — staff or customer — authenticates through this same screen. Two paths are
+supported:
 
 **A. Email/password**, an HTTP interim → access JWT handshake defined in OpenAPI:
 
@@ -30,16 +31,31 @@ Both paths converge on the same `LoginResponse` shape and the same in-memory ses
 
 Tokens are held **in memory only** (`TokenSession`). There is no secure storage or automatic refresh in v1.
 
+## Role routing
+
+**After either path succeeds, the client routes by role** (`AppViewModel.onLoginSuccess`,
+decoding the access token's `roles` claim via `JwtClaims`):
+
+| Role | Destination |
+|------|-------------|
+| `ROLE_ADMIN` / `ROLE_DRIVER` (staff) | `AppScreen.HOME` |
+| `ROLE_USER` (customer) — **password path only** | `AppScreen.CUSTOMER_BOOKINGS`, a read-only view of the caller's own bookings — see [06-customer-bookings.md](06-customer-bookings.md) |
+| `ROLE_USER` via Google, or anything unrecognised | Login refused, access token revoked immediately |
+
+Customer routing applies **only** to path A (email/password). Path B (Google Sign-In) still
+treats a `ROLE_USER` token as a lockout — see **L2** and
+[06-customer-bookings.md](06-customer-bookings.md) "Role routing" for why.
+
 **Default dev server (since HR-78):** the real Spring Boot backend on port **8080** — emulator base URL `http://10.0.2.2:8080/`. Mockoon/Prism on **8081** remains available via `USE_MOCK_SERVER = true` in `RetrofitInstance`. **Google Sign-In requires the real backend** — see Mockoon caveat below. See [05-offline-fallback.md](05-offline-fallback.md) for the full table, [project-environment.md](../project-environment.md) and [`mocks/README.md`](../../mocks/README.md).
 
 **Seeded accounts** (backend `data.sql`; `SPEC-auth-login-logout.md` §8.3):
 
-| Email | Password | Role |
-|-------|----------|------|
-| `admin@localhost` | `admin1234` | ADMIN |
-| `alex.tan@example.sg` | `customer123` | USER |
-| `ravi.kumar@example.sg` | `admin123` | ADMIN |
-| `ah.tan@example.sg` | `driver123` | DRIVER |
+| Email | Password | Role | Routes to |
+|-------|----------|------|-----------|
+| `admin@localhost` | `admin1234` | ADMIN | `HOME` |
+| `alex.tan@example.sg` | `customer123` | USER | `CUSTOMER_BOOKINGS` |
+| `ravi.kumar@example.sg` | `admin123` | ADMIN | `HOME` |
+| `ah.tan@example.sg` | `driver123` | DRIVER | `HOME` |
 
 A seeded login returning `invalid_credentials` means the backend hasn't restarted since `data.sql` last changed — it upserts `users` on every boot.
 
@@ -49,9 +65,12 @@ A seeded login returning `invalid_credentials` means the backend hasn't restarte
 
 ## Actors
 
-- **Admin / operator** — field or office staff managing mobilisation and returns
+- **Admin / operator** — field or office staff managing mobilisation and returns (`ROLE_ADMIN`/`ROLE_DRIVER`) — routes to `HOME`
+- **Customer** — a booking's customer, viewing their own bookings only (`ROLE_USER`, password login only) — routes to `CUSTOMER_BOOKINGS`, see [06-customer-bookings.md](06-customer-bookings.md)
 
-v1 treats every authenticated user as a single operator. Authorisation beyond "has a valid access token" is out of scope for the client.
+Beyond the staff/customer routing split above, authorisation is still out of scope for the
+client — neither actor's session grants any further client-side permission model (e.g. staff
+authorisation still relies entirely on the backend's own `403`s, per **L1**).
 
 > **Correction (HR-78).** The earlier wording — *“no roles API”* — is no longer accurate. The backend
 > has had a role model since before this branch: `User.role` is `USER` / `ADMIN` / `DRIVER`, and the
@@ -75,6 +94,17 @@ call. Two consequences worth recording:
 change), or decode the `roles` claim from the JWT the app already holds (client-only, no contract
 change). The second needs no coordination and is available today.
 
+> **Partially resolved (customer-login-bookings-view).** The second route above — decoding
+> `roles` from the JWT client-side — is now implemented (`network/JwtClaims.kt`), and the app
+> *does* vary its UI by role for the one distinction that mattered for this feature: staff
+> (`ROLE_ADMIN`/`ROLE_DRIVER`) vs. customer (`ROLE_USER`) at the point of login routing — see
+> "After either path succeeds, the client routes by role" above and
+> [06-customer-bookings.md](06-customer-bookings.md). This does **not** resolve either bullet
+> above: `ROLE_DRIVER` is still routed to the same staff `HOME` screen as `ROLE_ADMIN` and still
+> hits the same `403`s on every list/status call once there — `isStaff()` treats admin and
+> driver as one bucket, on purpose, matching what `HOME`/Deliveries/Returns already do. Only the
+> staff/customer split was in scope here.
+
 ### L2 — Google sign-in always provisions `ROLE_USER` *(HR-152)*
 
 A first-time Google sign-in auto-creates a backend `User` row with `role = USER`. There is no path
@@ -91,7 +121,7 @@ and its existing role, rather than creating a second row.
 |-------------|----------------------|---------------------------|
 | **Mockoon / Prism (port 8081)** | Static canned responses — **does not** verify password or interim JWT. Typical requests receive 200. **`/api/auth/google` is not implemented on Mockoon/Prism** — see Google Sign-In section below. | From `LoginResponse.username` (fixture: `admin@localhost` → UI shows `Admin`) |
 | **Real Spring Boot backend** (optional; often host port `8080`) | Validates interim JWT + email/password (see backend auth specs referenced from OpenAPI). Also the only environment that verifies real Google ID tokens. | From server `username` |
-| **Login UI dev hint** | Shows seed `admin@localhost` / `admin1234` (OpenAPI `LoginRequest` / example) | — |
+| **Login UI dev hint** | Shows all three seeded accounts (Customer/Driver/Admin) — see the dev seed panel row in UI notes below | — |
 
 | Field | Dev seed (OpenAPI + UI hint) |
 |-------|------------------------------|
@@ -168,20 +198,29 @@ Feature: Google Sign-In
 ```gherkin
 Feature: Admin login
 
-  Scenario: Valid login against a reachable auth API opens the home screen
+  Scenario: Valid staff login against a reachable auth API opens the home screen
     Given the user is on the login screen
     And the user is not logged in
     And the auth API is reachable
+    And the account is ROLE_ADMIN or ROLE_DRIVER
     When the user enters email and password
     And the user submits login
     Then the client calls GET /api/auth/getBearerToken
     And the client calls POST /api/auth/login with the interim Bearer and the credentials body
     And the access token is stored in the in-memory session
     And the user is marked as logged in
-    And the admin display name is derived from LoginResponse.username
+    And the display name is derived from LoginResponse.username
     And the current screen is HOME
     And no login error is shown
+
+  Scenario: Valid customer login opens the read-only bookings screen instead
+    Given the same steps as above, but the account is ROLE_USER
+    Then the current screen is CUSTOMER_BOOKINGS, not HOME
 ```
+
+The second scenario is the customer-login-bookings-view feature; see the full role-routing
+table above and [06-customer-bookings.md](06-customer-bookings.md) for its own acceptance
+criteria — it isn't repeated in full here to avoid the two documents drifting apart.
 
 Against **Mockoon**, any non-empty body that the mock accepts still returns the canned success response (see mock caveat below).
 
@@ -249,8 +288,12 @@ Password is sent as entered (no trim). Email **case sensitivity** is defined by 
     And the in-memory session is cleared even if the logout call fails
     And the user is logged out
     And the current screen is LOGIN
-    And session fields (admin name, login error) are reset
+    And session fields (display name, login error) are reset
 ```
+
+Logout is identical for staff and customer sessions — `CustomerBookingsScreen`'s logout icon
+calls the same `AppViewModel.logout()`, which clears `AppState` (including `isCustomer`) back
+to its default and returns to `LOGIN` regardless of which role was signed in.
 
 ---
 
@@ -258,19 +301,19 @@ Password is sent as entered (no trim). Email **case sensitivity** is defined by 
 
 | Element | Behaviour |
 |---------|-----------|
-| Brand | "Heavy Rental" / "Administrator Portal" |
+| Brand | "Heavy Rental" / "Sign in to your account" — role-neutral copy since staff and customers share this screen (was "Administrator Portal" before customer-login-bookings-view) |
 | Email field | Email keyboard, next IME action |
 | Password field | Visibility toggle |
-| "Continue with Google" button | Below the Sign In button, separated by an "or" divider; disabled while `isLoggingIn` |
+| "Continue with Google" button | Below the Sign In button, separated by an "or" divider; disabled while `isLoggingIn`; staff-only in effect, see **Role routing** above |
 | Error | Shown when `loginError` is non-null (shared between password and Google failures) |
-| Dev seed panel | Shows OpenAPI-aligned seed email/password for local backends |
+| Dev seed panel | Shows all three seeded accounts — Customer, Driver, Admin — with their email/password, aligned with the seeded-accounts table above |
 | Loading | Submit disabled / progress while `isLoggingIn` |
 
 ---
 
 ## Out of scope (v1)
 
-- Roles / permissions beyond a single operator session
+- Any client-side role/permission model beyond the two-way staff/customer routing split described above — no in-app roles, groups, or per-screen permission checks
 - Password reset, MFA, biometric login
 - Secure storage of tokens or credentials (EncryptedSharedPreferences, Keystore)
 - Token refresh / sliding expiry UX
@@ -286,6 +329,7 @@ Password is sent as entered (no trim). Email **case sensitivity** is defined by 
 | Concern | Location |
 |---------|----------|
 | Login / logout orchestration | `viewmodel/AppViewModel.kt` — `login`, `logout`, `loginWithGoogle`, `setLoginError` |
+| Role routing after login | `viewmodel/AppViewModel.kt` — `onLoginSuccess(response, allowCustomer)`; `network/JwtClaims.kt` — `isStaff`, `isCustomer` |
 | Interim → access handshake (password) | `data/repository/AuthRepository.kt` — `login` |
 | Interim → access handshake (Google) | `data/repository/AuthRepository.kt` — `loginWithGoogle` |
 | In-memory tokens | `network/TokenSession.kt` |
@@ -303,6 +347,7 @@ Password is sent as entered (no trim). Email **case sensitivity** is defined by 
 
 ## Related specs
 
+- [06-customer-bookings.md](06-customer-bookings.md) — the customer-side destination this screen routes `ROLE_USER` sessions to
 - [api/README.md](../api/README.md) — base URLs, endpoint summary, mock commands
 - [05-offline-fallback.md](05-offline-fallback.md) — list/status fallback after login (not login itself)
 - [project-environment.md](../project-environment.md) — OpenAPI → Mockoon generation

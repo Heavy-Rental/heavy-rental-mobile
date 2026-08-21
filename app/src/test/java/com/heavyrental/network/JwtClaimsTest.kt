@@ -48,6 +48,35 @@ class JwtClaimsTest {
     }
 
     @Test
+    fun `customer is ROLE_USER`() {
+        assertTrue(JwtClaims.isCustomer(tokenWithRoles("ROLE_USER")))
+    }
+
+    @Test
+    fun `admin is not a customer`() {
+        assertFalse(JwtClaims.isCustomer(tokenWithRoles("ROLE_ADMIN")))
+    }
+
+    @Test
+    fun `driver is not a customer`() {
+        assertFalse(JwtClaims.isCustomer(tokenWithRoles("ROLE_DRIVER")))
+    }
+
+    @Test
+    fun `unrecognised role is neither staff nor customer`() {
+        val token = tokenWithRoles("ROLE_MYSTERY")
+        assertFalse(JwtClaims.isStaff(token))
+        assertFalse(JwtClaims.isCustomer(token))
+    }
+
+    @Test
+    fun `missing roles claim is neither staff nor customer`() {
+        val token = tokenWithPayload("""{"sub":"someone@example.sg"}""")
+        assertFalse(JwtClaims.isStaff(token))
+        assertFalse(JwtClaims.isCustomer(token))
+    }
+
+    @Test
     fun `single role as bare string is accepted`() {
         val token = tokenWithPayload("""{"roles":"ROLE_ADMIN"}""")
         assertEquals(listOf("ROLE_ADMIN"), JwtClaims.rolesOf(token))

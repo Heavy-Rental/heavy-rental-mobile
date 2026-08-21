@@ -1,8 +1,9 @@
-# Domain: Delivery and return list filters
+# Domain: Delivery, return, and customer booking list filters
 
 **Status:** Implemented (v1)  
 **Code (seed/offline derive):** `data/models/Bookings.kt` — `toDeliveryItems()`, `toReturnItems()`  
-**Code (list load):** `BookingRepository.getTodaysDeliveries()` / `getTodaysReturns()` via `GET /api/deliveries` / `GET /api/returns`  
+**Code (list load):** `BookingRepository.getTodaysDeliveries()` / `getTodaysReturns()` via `GET /api/deliveries` / `GET /api/returns`; `getBookings()` via `GET /api/bookings` for the customer list  
+**Code (customer list UI filter/sort):** `ui/screens/CustomerBookingsScreen.kt`  
 **Date basis (seed only):** `java.time.LocalDate.now()` (device local timezone)
 
 ---
@@ -143,6 +144,70 @@ Scenario Outline: Return membership
 | Completed | `bookingStatus == COMPLETED` |
 
 Sort: `customerName` ascending (v1 UI).
+
+---
+
+## Customer booking list filter
+
+**Code:** `ui/screens/CustomerBookingsScreen.kt`
+**Product spec:** [product/06-customer-bookings.md](../product/06-customer-bookings.md)
+
+Unlike the two lists above, there is **no date-based domain membership filter** here — no
+`startDate == today` / `endDate == today` predicate at all. Every booking `GET /api/bookings`
+returns for the authenticated customer is a member of this list; membership is entirely a
+server-side concern (`BookingService.getBookings` scoping by caller identity), not a client
+date computation. The client applies **only** a status filter, purely for UI narrowing, on top
+of the full set the server already scoped:
+
+| UI filter | Extra predicate |
+|-----------|-----------------|
+| All | none |
+| Pending | `bookingStatus ∈ { PENDING_DEPOSIT, PENDING_CONFIRMED }` |
+| Confirmed | `bookingStatus == CONFIRMED` |
+| Mobilised | `bookingStatus == MOBILISED` |
+| Completed | `bookingStatus == COMPLETED` |
+| Cancelled | `bookingStatus == CANCELLED` |
+
+The **Pending** filter is the one place client-side status logic groups two enum values under
+one UI predicate — deliberately: from a customer's point of view, `PENDING_DEPOSIT` (deposit
+not yet paid) and `PENDING_CONFIRMED` (deposit paid, awaiting staff confirmation) both mean
+"nothing to do but wait," and splitting them into separate chips would only ask the customer to
+distinguish two flavours of *not yet*. `CONFIRMED` and `MOBILISED` are common enough, and
+distinct enough in meaning, to each get their own chip instead.
+
+A `null` `bookingStatus` matches **All** only, same "unclassifiable" treatment as the staff
+lists — see [booking-status-machine.md](booking-status-machine.md) "`null` is a seventh case".
+
+```gherkin
+Scenario Outline: Customer Pending filter membership
+  Given a booking with status <status>
+  Then it <membership> the Pending filter
+
+  Examples:
+    | status             | membership |
+    | PENDING_DEPOSIT     | is in      |
+    | PENDING_CONFIRMED   | is in      |
+    | CONFIRMED           | is not in  |
+    | MOBILISED           | is not in  |
+    | COMPLETED           | is not in  |
+    | CANCELLED           | is not in  |
+```
+
+### Sort
+
+`bookingId` **descending** (newest booking first), applied after the status filter, within
+every chip including **All**. This differs from the staff lists' `customerName` ascending sort
+— a customer viewing only their own bookings has no need to sort by customer name (it's always
+the same name), and ordering by ID surfaces the most recently created booking first.
+
+### Client vs API (customer list)
+
+| Concern | Owner |
+|---------|--------|
+| Membership (which bookings belong to this customer at all) | **Server** — `GET /api/bookings` scoped to the caller by `BookingService.getBookings` |
+| Status filter chips (All/Pending/Confirmed/Mobilised/Completed/Cancelled) | **Client** — UI-only narrowing of the already-scoped list, no extra API call per chip |
+| Sort (`bookingId` descending) | **Client** |
+| Date-based "today" filtering | **Not applied** — every booking the server scopes to the caller is eligible, regardless of date |
 
 ---
 
