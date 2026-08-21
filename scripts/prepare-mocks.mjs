@@ -110,7 +110,7 @@ function httpRoute({ uuid, method, endpoint, documentation, responses }) {
   };
 }
 
-function buildMockoonEnvironment(paths) {
+function buildMockoonEnvironment(paths, { returnItemMockoonFixture }) {
   const routes = [
     httpRoute({
       uuid: UUID.getBearerToken,
@@ -236,12 +236,13 @@ function buildMockoonEnvironment(paths) {
       uuid: UUID.patchReturn,
       method: "patch",
       endpoint: "api/returns/:bookingId/status",
-      documentation: "Update return status (MOBILISED → COMPLETED)",
+      documentation:
+        "Update return status (MOBILISED → COMPLETED). INLINE body so ADR 003 {{body}} templating is stored in the committed environment, not a gitignored FILE.",
       responses: [
         jsonResponse({
           uuid: UUID.resp(7),
-          label: "200 — sample return item",
-          filePath: paths.returnItem,
+          label: "200 — echoes bookingStatus / returnNotes from the PATCH body (ADR 003)",
+          body: returnItemMockoonFixture,
         }),
       ],
     }),
@@ -413,10 +414,9 @@ function main() {
     returns: relFromMockoon(path.join(examplesDir, "returns.json")),
     bookingItem: relFromMockoon(bookingItemPath),
     deliveryItem: relFromMockoon(deliveryItemPath),
-    returnItem: relFromMockoon(returnItemPath),
   };
 
-  const env = buildMockoonEnvironment(mockoonPaths);
+  const env = buildMockoonEnvironment(mockoonPaths, { returnItemMockoonFixture });
   const envPath = path.join(mockoonDir, "heavy-rental.environment.json");
   writeJson(envPath, env);
 

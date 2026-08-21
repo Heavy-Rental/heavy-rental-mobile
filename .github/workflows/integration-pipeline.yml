@@ -6,7 +6,8 @@
 #   2. Quality Control       needs Integration — lintDebug, testDebugUnitTest, assembleDebug
 #   3. Security Testing      needs Integration — SAST (Semgrep) + SCA/FS (Trivy)
 #   4. CodeQL Analysis       needs Integration — GitHub CodeQL (Java/Kotlin)
-#   5. Mock Contract Tests   needs Integration — Prism + npm run mock:verify
+#   5. Mock Contract Tests   needs Integration — Mockoon + npm run mock:verify
+#                            (ADR 003 returnNotes echo; Prism is not used in CI)
 #   6. GitHub Flow CI Gate   aggregate: Integration first, then QC + Security + CodeQL + Mocks
 #
 # Security report format (standard): SARIF 2.1.0
@@ -833,7 +834,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   # ---------------------------------------------------------------------------
-  # 5. Mock contract tests — OpenAPI Prism + mock:verify
+  # 5. Mock contract tests — Mockoon + mock:verify (ADR 003 returnNotes echo)
   # ---------------------------------------------------------------------------
   mock-contract-tests:
     name: Mock Contract Tests
@@ -892,12 +893,10 @@ jobs:
           }
 
           MOCK_SCRIPT=""
-          for script in mock:prism mock:mockoon; do
-            if has_script "$script"; then
-              MOCK_SCRIPT="$script"
-              break
-            fi
-          done
+          # ADR 003 returnNotes echo is Mockoon-only. Do not fall back to Prism.
+          if has_script mock:mockoon; then
+            MOCK_SCRIPT="mock:mockoon"
+          fi
 
           VERIFY_SCRIPT=""
           if has_script mock:verify; then
@@ -906,27 +905,20 @@ jobs:
 
           echo "mock_script=${MOCK_SCRIPT}" >> "$GITHUB_OUTPUT"
           echo "verify_script=${VERIFY_SCRIPT}" >> "$GITHUB_OUTPUT"
+          echo "expect_echo=1" >> "$GITHUB_OUTPUT"
 
           if [ -n "$MOCK_SCRIPT" ] && [ -n "$VERIFY_SCRIPT" ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
             echo "Detected mock server: npm run $MOCK_SCRIPT"
             echo "Detected verify:      npm run $VERIFY_SCRIPT"
+            echo "ADR 003 echo:         MOCK_EXPECT_ECHO=1"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
             echo "Mock script found: ${MOCK_SCRIPT:-<none>}"
             echo "Verify script found: ${VERIFY_SCRIPT:-<none>}"
+            echo "::error::Mock Contract Tests require npm scripts mock:mockoon and mock:verify (ADR 003 echo is Mockoon-only; Prism is not used in CI)."
+            exit 1
           fi
-
-      - name: Mock contract tests (placeholder — scripts not defined)
-        if: steps.detect.outputs.ready != 'true'
-        run: |
-          set -euo pipefail
-          {
-            echo "### Mock contract tests"
-            echo ""
-            echo "Status: **skipped (placeholder)** — \`mock:prism\`/\`mock:mockoon\` and/or \`mock:verify\` not defined."
-          } >> "$GITHUB_STEP_SUMMARY"
-          echo "Mock contract tests not defined yet — placeholder step passed."
 
       - name: Prepare mock assets
         if: steps.detect.outputs.ready == 'true'
@@ -997,7 +989,9 @@ jobs:
         working-directory: ${{ env.APP_PATH }}
         env:
           VERIFY_SCRIPT: ${{ steps.detect.outputs.verify_script }}
+          MOCK_SCRIPT: ${{ steps.detect.outputs.mock_script }}
           MOCK_API_BASE_URL: ${{ env.MOCK_API_BASE_URL }}
+          MOCK_EXPECT_ECHO: "1"
         run: |
           set -euo pipefail
           REPORT_DIR="${GITHUB_WORKSPACE}/test-reports"
@@ -1011,8 +1005,10 @@ jobs:
             echo ""
             echo "| Field | Value |"
             echo "| --- | --- |"
+            echo "| Mock server | \`npm run ${MOCK_SCRIPT}\` |"
             echo "| Verify script | \`npm run ${VERIFY_SCRIPT}\` |"
             echo "| Base URL | \`${MOCK_API_BASE_URL}\` |"
+            echo "| MOCK_EXPECT_ECHO | \`${MOCK_EXPECT_ECHO}\` |"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Stop mock server

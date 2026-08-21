@@ -64,6 +64,9 @@ async function main() {
       console.error(
         `FAIL PATCH /api/returns/8/status did not echo returnNotes (got: ${JSON.stringify(echoed)})`
       );
+      console.error(
+        `Full PATCH response: ${JSON.stringify(returnPatch.json)}`
+      );
       returnPatch.ok = false;
     } else if (!expectEcho && echoed !== returnNotesSample) {
       console.log(
