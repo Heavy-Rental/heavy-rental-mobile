@@ -6,7 +6,8 @@
 #   2. Quality Control       needs Integration — lintDebug, testDebugUnitTest, assembleDebug
 #   3. Security Testing      needs Integration — SAST (Semgrep) + SCA/FS (Trivy)
 #   4. CodeQL Analysis       needs Integration — GitHub CodeQL (Java/Kotlin)
-#   5. Mock Contract Tests   needs Integration — Prism + npm run mock:verify
+#   5. Mock Contract Tests   needs Integration — Mockoon + npm run mock:verify
+#                            (ADR 003 returnNotes echo; Prism is not used in CI)
 #   6. GitHub Flow CI Gate   aggregate: Integration first, then QC + Security + CodeQL + Mocks
 #
 # Security report format (standard): SARIF 2.1.0
@@ -374,7 +375,7 @@ jobs:
     name: Security Testing
     runs-on: ubuntu-latest
     needs: [integration]
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - name: Checkout calling repository (PR / push head)
         if: needs.integration.outputs.checkout_mode == 'caller'
@@ -406,12 +407,234 @@ jobs:
         run: |
           set -euo pipefail
           REPORT_DIR="${GITHUB_WORKSPACE}/security-reports"
+          # Community packs plus custom ERROR rules for plaintext credentials
+          # that p/secrets and p/gitleaks miss (generic passwords, not tokens).
+          RULES_FILE="${REPORT_DIR}/semgrep-custom-rules.yml"
+          cat > "${RULES_FILE}" << 'SEMGREP_CUSTOM_RULES'
+          rules:
+            - id: heavy-rental.mobile.hardcoded-credential-in-properties
+              languages: [regex]
+              severity: ERROR
+              message: >
+                Hard-coded credential in a properties/env file (CWE-798). Use
+                an environment variable or secrets manager. A plaintext
+                password, secret, token, or API key in config is a shipping secret.
+              metadata:
+                category: security
+                cwe: ["CWE-798: Use of Hard-coded Credentials"]
+                owasp: ["A07:2021 - Identification and Authentication Failures"]
+                confidence: HIGH
+                subcategory: [vuln]
+                likelihood: HIGH
+                impact: HIGH
+                technology: [secrets]
+              paths:
+                include:
+                  - "*.properties"
+                  - "*.env"
+                  - "*.ini"
+                  - ".env"
+                  - ".env.*"
+                  - "*.gradle"
+                exclude:
+                  - "**/src/test/**"
+                  - "**/*example*"
+                  - "**/*sample*"
+                  - "**/node_modules/**"
+              pattern-regex: >-
+                (?i)^[ \t]*[A-Za-z0-9._-]*(?:password|passwd|pwd|secret|secret[-_]?key|api[-._]?key|access[-._]?key|private[-._]?key|auth[-._]?token|credentials?)[ \t]*=[ \t]*(?!\$\{)(?!ENC\()(?!\{cipher\})(?![ \t]*(?:#|$))[^\s#]+
+            - id: heavy-rental.mobile.hardcoded-credential-in-yaml
+              languages: [regex]
+              severity: ERROR
+              message: >
+                Hard-coded credential in YAML config (CWE-798). Use an
+                environment variable or secrets manager instead of plaintext.
+              metadata:
+                category: security
+                cwe: ["CWE-798: Use of Hard-coded Credentials"]
+                owasp: ["A07:2021 - Identification and Authentication Failures"]
+                confidence: HIGH
+                subcategory: [vuln]
+                likelihood: HIGH
+                impact: HIGH
+                technology: [secrets]
+              paths:
+                include:
+                  - "*.yml"
+                  - "*.yaml"
+                exclude:
+                  - "**/src/test/**"
+                  - "**/*example*"
+                  - "**/*sample*"
+                  - "**/.github/**"
+                  - "**/node_modules/**"
+              pattern-regex: >-
+                (?i)^[ \t-]*["']?(?:[A-Za-z0-9._-]*[\._-])?(password|passwd|pwd|secret|secret[-_]?key|api[-._]?key|access[-._]?key|private[-._]?key|auth[-._]?token|credentials?)["']?[ \t]*:[ \t]*(?!\$\{)(?!~)(?!null\b)(?!ENC\()(?!\{cipher\})(?!["']?[ \t]*(?:#|$))["']?[^\s#"']+
+            - id: heavy-rental.mobile.env-placeholder-plaintext-default
+              languages: [regex]
+              severity: ERROR
+              message: >
+                Placeholder ${VAR:default} embeds a plaintext credential
+                default (CWE-798). Empty defaults (${VAR:} or ${VAR}) are OK.
+              metadata:
+                category: security
+                cwe: ["CWE-798: Use of Hard-coded Credentials"]
+                owasp: ["A07:2021 - Identification and Authentication Failures"]
+                confidence: HIGH
+                subcategory: [vuln]
+                likelihood: HIGH
+                impact: HIGH
+                technology: [secrets]
+              paths:
+                include:
+                  - "*.properties"
+                  - "*.yml"
+                  - "*.yaml"
+                  - "*.env"
+                  - ".env"
+                  - ".env.*"
+                exclude:
+                  - "**/src/test/**"
+                  - "**/*example*"
+                  - "**/*sample*"
+              pattern-regex: >-
+                (?i)^[ \t]*[A-Za-z0-9._-]*(?:password|passwd|pwd|secret|secret[-_]?key|api[-._]?key|access[-._]?key|private[-._]?key|auth[-._]?token|credentials?)[ \t]*[=:][ \t]*\$\{[^}:]+:(?![ \t]*\})[^}]+\}
+            - id: heavy-rental.mobile.jdbc-url-embedded-credentials
+              languages: [regex]
+              severity: ERROR
+              message: >
+                JDBC URL embeds user:password@host (CWE-798). Use a URL without
+                credentials and set username/password from the environment.
+              metadata:
+                category: security
+                cwe: ["CWE-798: Use of Hard-coded Credentials"]
+                owasp: ["A07:2021 - Identification and Authentication Failures"]
+                confidence: HIGH
+                subcategory: [vuln]
+                likelihood: HIGH
+                impact: HIGH
+                technology: [java, jdbc, secrets]
+              paths:
+                include:
+                  - "*.properties"
+                  - "*.yml"
+                  - "*.yaml"
+                  - "*.xml"
+                  - "*.java"
+                  - "*.kt"
+                  - "*.env"
+                  - ".env"
+                exclude:
+                  - "**/src/test/**"
+              pattern-regex: >-
+                (?i)jdbc:[a-z0-9]+://[^/\s:]+:[^@/\s]+@
+            - id: heavy-rental.mobile.java-hardcoded-secret-assignment
+              languages: [java]
+              severity: ERROR
+              message: >
+                Hard-coded credential assigned in Java source (CWE-798). Inject
+                the value from the environment or a secrets manager.
+              metadata:
+                category: security
+                cwe: ["CWE-798: Use of Hard-coded Credentials"]
+                owasp: ["A07:2021 - Identification and Authentication Failures"]
+                confidence: HIGH
+                subcategory: [vuln]
+                likelihood: HIGH
+                impact: HIGH
+                technology: [java, secrets]
+              paths:
+                exclude:
+                  - "**/src/test/**"
+                  - "**/*Test.java"
+                  - "**/*Tests.java"
+              patterns:
+                - pattern-either:
+                    - pattern: $TYPE $VAR = "$VAL";
+                    - pattern: $VAR = "$VAL";
+                - metavariable-regex:
+                    metavariable: $VAR
+                    regex: (?i).*(password|passwd|secret|api[_]?key|token|credential).*
+                - metavariable-regex:
+                    metavariable: $VAL
+                    regex: (?!\$\{).{3,}
+            - id: heavy-rental.mobile.java-setpassword-hardcoded
+              languages: [java]
+              severity: ERROR
+              message: >
+                Hard-coded password passed to a setter (CWE-798). Load it from
+                the environment or a secrets manager.
+              metadata:
+                category: security
+                cwe: ["CWE-798: Use of Hard-coded Credentials"]
+                owasp: ["A07:2021 - Identification and Authentication Failures"]
+                confidence: HIGH
+                subcategory: [vuln]
+                likelihood: HIGH
+                impact: HIGH
+                technology: [java, secrets]
+              paths:
+                exclude:
+                  - "**/src/test/**"
+                  - "**/*Test.java"
+                  - "**/*Tests.java"
+              patterns:
+                - pattern-either:
+                    - pattern: $OBJ.setPassword("$VAL");
+                    - pattern: $OBJ.password("$VAL");
+                    - pattern: DriverManager.getConnection($URL, $USER, "$VAL");
+                - metavariable-regex:
+                    metavariable: $VAL
+                    regex: (?!\$\{).{1,}
+            - id: heavy-rental.mobile.kotlin-hardcoded-secret-assignment
+              languages: [kt]
+              severity: ERROR
+              message: >
+                Hard-coded credential assigned in Kotlin source (CWE-798). Inject
+                the value from the environment or a secrets manager.
+              metadata:
+                category: security
+                cwe: ["CWE-798: Use of Hard-coded Credentials"]
+                owasp: ["A07:2021 - Identification and Authentication Failures"]
+                confidence: HIGH
+                subcategory: [vuln]
+                likelihood: HIGH
+                impact: HIGH
+                technology: [kotlin, secrets]
+              paths:
+                exclude:
+                  - "**/src/test/**"
+                  - "**/*Test.kt"
+                  - "**/*Tests.kt"
+              patterns:
+                - pattern-either:
+                    - pattern: val $VAR = "$VAL"
+                    - pattern: var $VAR = "$VAL"
+                    - pattern: const val $VAR = "$VAL"
+                - metavariable-regex:
+                    metavariable: $VAR
+                    regex: (?i).*(password|passwd|secret|api[_]?key|token|credential).*
+                - metavariable-regex:
+                    metavariable: $VAL
+                    regex: (?!\$\{).{3,}
+          SEMGREP_CUSTOM_RULES
+          # run: | already strips this step's indent from the heredoc. A second
+          # de-indent (sed) would pull nested list items to column 1 and break YAML.
+          echo "==> Validating custom Semgrep rules"
+          semgrep --validate --config="${RULES_FILE}" --metrics=off
           SEMGREP_COMMON=(
             --config=p/kotlin
             --config=p/java
             --config=p/owasp-top-ten
             --config=p/security-audit
             --config=p/secrets
+            --config=p/cwe-top-25
+            --config=p/findsecbugs
+            --config=p/gitleaks
+            --config=p/sql-injection
+            --config=p/jwt
+            --config=p/insecure-transport
+            --config="${RULES_FILE}"
             --metrics=off
           )
 
@@ -611,7 +834,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   # ---------------------------------------------------------------------------
-  # 5. Mock contract tests — OpenAPI Prism + mock:verify
+  # 5. Mock contract tests — Mockoon + mock:verify (ADR 003 returnNotes echo)
   # ---------------------------------------------------------------------------
   mock-contract-tests:
     name: Mock Contract Tests
@@ -670,14 +893,10 @@ jobs:
           }
 
           MOCK_SCRIPT=""
-          # Prefer Mockoon so ADR 003 returnNotes echo stays a contract gate.
-          # Prism is the fallback (static OpenAPI examples; skip echo via MOCK_EXPECT_ECHO=0).
-          for script in mock:mockoon mock:prism; do
-            if has_script "$script"; then
-              MOCK_SCRIPT="$script"
-              break
-            fi
-          done
+          # ADR 003 returnNotes echo is Mockoon-only. Do not fall back to Prism.
+          if has_script mock:mockoon; then
+            MOCK_SCRIPT="mock:mockoon"
+          fi
 
           VERIFY_SCRIPT=""
           if has_script mock:verify; then
@@ -686,27 +905,20 @@ jobs:
 
           echo "mock_script=${MOCK_SCRIPT}" >> "$GITHUB_OUTPUT"
           echo "verify_script=${VERIFY_SCRIPT}" >> "$GITHUB_OUTPUT"
+          echo "expect_echo=1" >> "$GITHUB_OUTPUT"
 
           if [ -n "$MOCK_SCRIPT" ] && [ -n "$VERIFY_SCRIPT" ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
             echo "Detected mock server: npm run $MOCK_SCRIPT"
             echo "Detected verify:      npm run $VERIFY_SCRIPT"
+            echo "ADR 003 echo:         MOCK_EXPECT_ECHO=1"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
             echo "Mock script found: ${MOCK_SCRIPT:-<none>}"
             echo "Verify script found: ${VERIFY_SCRIPT:-<none>}"
+            echo "::error::Mock Contract Tests require npm scripts mock:mockoon and mock:verify (ADR 003 echo is Mockoon-only; Prism is not used in CI)."
+            exit 1
           fi
-
-      - name: Mock contract tests (placeholder — scripts not defined)
-        if: steps.detect.outputs.ready != 'true'
-        run: |
-          set -euo pipefail
-          {
-            echo "### Mock contract tests"
-            echo ""
-            echo "Status: **skipped (placeholder)** — \`mock:prism\`/\`mock:mockoon\` and/or \`mock:verify\` not defined."
-          } >> "$GITHUB_STEP_SUMMARY"
-          echo "Mock contract tests not defined yet — placeholder step passed."
 
       - name: Prepare mock assets
         if: steps.detect.outputs.ready == 'true'
@@ -777,9 +989,9 @@ jobs:
         working-directory: ${{ env.APP_PATH }}
         env:
           VERIFY_SCRIPT: ${{ steps.detect.outputs.verify_script }}
+          MOCK_SCRIPT: ${{ steps.detect.outputs.mock_script }}
           MOCK_API_BASE_URL: ${{ env.MOCK_API_BASE_URL }}
-          # Prism cannot echo PATCH bodies; Mockoon can (ADR 003).
-          MOCK_EXPECT_ECHO: ${{ steps.detect.outputs.mock_script == 'mock:prism' && '0' || '1' }}
+          MOCK_EXPECT_ECHO: "1"
         run: |
           set -euo pipefail
           REPORT_DIR="${GITHUB_WORKSPACE}/test-reports"
@@ -793,8 +1005,10 @@ jobs:
             echo ""
             echo "| Field | Value |"
             echo "| --- | --- |"
+            echo "| Mock server | \`npm run ${MOCK_SCRIPT}\` |"
             echo "| Verify script | \`npm run ${VERIFY_SCRIPT}\` |"
             echo "| Base URL | \`${MOCK_API_BASE_URL}\` |"
+            echo "| MOCK_EXPECT_ECHO | \`${MOCK_EXPECT_ECHO}\` |"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Stop mock server
