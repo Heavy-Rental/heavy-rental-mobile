@@ -1,0 +1,52 @@
+schema: spec-driven-with-adr
+
+context: |
+  Project: Heavy Rental Mobile (Android operations app)
+  Canonical GitHub repository: Heavy-Rental/heavy-rental-mobile
+  Application id: com.heavyrental
+  Runtime: Kotlin JVM 17, AGP 9.2, Gradle 9.6, compile/target SDK 35, minSdk 26
+  Default HTTP: Spring Boot on host :8080 (emulator http://10.0.2.2:8080/)
+  Mock HTTP: Mockoon or Prism on :8081 when USE_MOCK_SERVER = true
+  GitHub Flow: feature branch → PR into develop (CI) → merge to develop → manual Release
+
+  Sibling sources of truth (do not contradict):
+  - Backend behavior: Heavy-Rental/heavy-rental-spring-rest-api openspec/specs/
+    (auth-login-logout, auth-interim-token, booking-delivery-return).
+  - Portal: Heavy-Rental/heavy-rental-react-web-portal (customer/admin web).
+  - Dev containers: Heavy-Rental/heavy-rental-devcontainer-configuration.
+
+  Documentation stack (must stay consistent):
+  - OpenSpec (`openspec/`) is the living behavior contract (what the system does).
+  - OpenSPDD (`spdd/`) holds REASONS Canvas design contracts (how to implement).
+  - ADRs (`adr/NNNN-kebab-title.md`) are the durable architecture log (why).
+  - `specification/` holds detailed product SDD (screens, Gherkin, OpenAPI).
+    OpenSpec product-features maps each file. If a fact conflicts, prefer the
+    running code / workflow YAML, then OpenSpec specs, then update specification/.
+
+  Facts that must not drift:
+  - DEFAULT_APP_REPOSITORY is Heavy-Rental/heavy-rental-mobile in Fast Feedback,
+    Integration, and Release reusable workflows.
+  - First-time POST /api/auth/google provisions ROLE_DRIVER (never ROLE_ADMIN).
+    Existing accounts keep their role. Google ROLE_USER is refused client-side.
+  - ROLE_DRIVER MAY call /api/bookings, /api/deliveries, and /api/returns
+    (Spring booking-delivery-return). Do not document a driver lock-out.
+  - Booking/delivery/return routes exist on Spring develop (not only HR-80).
+  - List payloads include items[] (all BookingItem rows). Client renders every AssetLine.
+  - This repo has no Academy/paid CD. android-ci.yml is a legacy leftover, not GitHub Flow SoT.
+
+rules:
+  specs:
+    - Use RFC 2119 MUST/SHALL/SHOULD/MAY.
+    - Requirements describe observable behavior (screens, HTTP status, workflow outcomes), not internal class names except as implementation pointers.
+    - Every requirement has at least one #### Scenario with GIVEN/WHEN/THEN.
+    - Keep detailed UI/domain Gherkin in specification/; OpenSpec references them.
+  design:
+    - Read every in-force ADR under adr/ before proposing architecture.
+    - Do not edit an accepted ADR; supersede it with a new numbered ADR.
+    - Server facts MUST match heavy-rental-spring-rest-api OpenSpec when they overlap.
+  tasks:
+    - Checkbox tasks (`- [ ] N.N ...`) only.
+    - Honor in-force ADRs and OpenSPDD Safeguards.
+  adr:
+    - Durable ADRs live at repo-root adr/NNNN-kebab-title.md (MADR-short).
+    - Change-local openspec/changes/<change>/adr.md is the review manifest only.

@@ -40,7 +40,7 @@ Product auth behaviour: [product/01-login.md](../product/01-login.md).
 
 **Mockoon auth caveat:** Auth routes return static canned bodies (no real JWT signing or password verification). Use a real backend to exercise 400/401/403 credential paths.
 
-**Mockoon return-notes caveat:** unlike every other Mockoon route, `PATCH /api/returns/{bookingId}/status` echoes the request body's `bookingStatus`/`returnNotes` back in its response (Mockoon templating) instead of a fixed value — see [ADR 003](../decisions/003-mock-echoes-return-notes.md). It still does not validate the body (no `400` for a missing `returnNotes`).
+**Mockoon return-notes caveat:** unlike every other Mockoon route, `PATCH /api/returns/{bookingId}/status` echoes the request body's `bookingStatus`/`returnNotes` back in its response (Mockoon templating) instead of a fixed value — see [ADR-0005](../../adr/0005-mockoon-echoes-return-notes.md). It still does not validate the body (no `400` for a missing `returnNotes`).
 
 ## Kotlin mapping
 
@@ -106,6 +106,7 @@ Then open `mocks/mockoon/heavy-rental.environment.json` in the Mockoon app.
 
 ## Related decisions
 
-- [001-openapi-as-api-source.md](../decisions/001-openapi-as-api-source.md)
-- [002-mock-strategy.md](../decisions/002-mock-strategy.md)
-- [003-mock-echoes-return-notes.md](../decisions/003-mock-echoes-return-notes.md)
+- [ADR-0003](../../adr/0003-openapi-as-api-source.md) — OpenAPI as client HTTP contract
+- [ADR-0004](../../adr/0004-three-layer-mock-strategy.md) — mock layers
+- [ADR-0005](../../adr/0005-mockoon-echoes-return-notes.md) — return-notes echo
+- [ADR-0006](../../adr/0006-google-sign-in-credential-manager.md) — Google Sign-In (not on mock)

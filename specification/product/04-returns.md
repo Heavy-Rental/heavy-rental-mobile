@@ -159,12 +159,12 @@ don't drift apart. See [03-deliveries.md](03-deliveries.md) — Known issues.
 
 | Ref | Summary | Status |
 |-----|---------|--------|
-| K1 | A multi-asset booking shows only one asset — `ReturnItemResponse` carries a single `assetName`/`serialNumber` pair and the server discards the rest | Client-side implemented (`items: List<AssetLine>`, every entry rendered); blocked on the backend migrating to the `items` contract |
+| K1 | A multi-asset booking shows only one asset | Resolved (HR-113 client `items[]` + Spring FR-BDR-007 all BookingItem rows) |
 | K2 | The `Qty: N` badge was removed by HR-78 (`quantity` has no backend equivalent) | Superseded, not literally restored — every `AssetLine` now gets its own row, so no separate count badge was added (see 03-deliveries.md) |
 | K3 | Unknown status renders a grey "Unknown" badge; empty `items` renders a blank card title | Fixed (HR-93; relocated to the per-`AssetLine` / empty-`items` pattern when K1 landed) — see 03-deliveries.md |
 
-For returns specifically, K1 means a driver can mark a booking `COMPLETED` while a second asset is
-still on site, with nothing on the card indicating it exists.
+For returns specifically, an empty or truncated `items[]` from the server would still hide extra
+assets; that is a backend contract violation (FR-BDR-007), not missing client UI.
 
 ---
 

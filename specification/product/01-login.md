@@ -48,7 +48,7 @@ treats a `ROLE_USER` token as a lockout — see **L2** and
 
 **Default dev server (since HR-78):** the real Spring Boot backend on port **8080** — emulator base URL `http://10.0.2.2:8080/`. Mockoon/Prism on **8081** remains available via `USE_MOCK_SERVER = true` in `RetrofitInstance`. **Google Sign-In requires the real backend** — see Mockoon caveat below. See [05-offline-fallback.md](05-offline-fallback.md) for the full table, [project-environment.md](../project-environment.md) and [`mocks/README.md`](../../mocks/README.md).
 
-**Seeded accounts** (backend `data.sql`; `SPEC-auth-login-logout.md` §8.3):
+**Seeded accounts** (backend `data.sql`; Spring OpenSpec `seed-data` / `DOCUMENTATION.md`):
 
 | Email | Password | Role | Routes to |
 |-------|----------|------|-----------|
@@ -72,46 +72,33 @@ Beyond the staff/customer routing split above, authorisation is still out of sco
 client — neither actor's session grants any further client-side permission model (e.g. staff
 authorisation still relies entirely on the backend's own `403`s, per **L1**).
 
-> **Correction (HR-78).** The earlier wording — *“no roles API”* — is no longer accurate. The backend
-> has had a role model since before this branch: `User.role` is `USER` / `ADMIN` / `DRIVER`, and the
-> access JWT carries a `roles` claim (`SPEC-auth-login-logout.md` §4). What is missing is client
-> *visibility*: `LoginResponse` exposes only `accessToken`, `tokenType`, `expiresIn`, and `username`,
-> so the app has no server-provided role to adapt its UI with. See **L1** below.
+> **Correction (HR-78 / HR-242).** The backend has a role model: `User.role` is `USER` / `ADMIN` /
+> `DRIVER`, and the access JWT carries a `roles` claim (Spring `auth-login-logout`). `LoginResponse`
+> still exposes only `accessToken`, `tokenType`, `expiresIn`, and `username`. The client decodes
+> `roles` from the JWT (`JwtClaims`, ADR-0008). See **L1** below.
 
-### L1 — Roles are not visible to the client *(ticket: TBD)*
+### L1 — Role visibility and driver access *(partially resolved)*
 
-The app cannot vary its UI by role, and cannot anticipate an authorisation failure before making a
-call. Two consequences worth recording:
+The app varies UI by role for the staff vs customer split (`JwtClaims` + `onLoginSuccess`).
+`ROLE_ADMIN` and `ROLE_DRIVER` both route to `HOME` (`isStaff()`). That is intentional.
 
-- **`ROLE_DRIVER` is locked out of every business route today.** The backend's blanket rule grants
-  only `ROLE_USER`/`ROLE_ADMIN` (`SPEC-api-index.md` §4), so `ah.tan@example.sg` authenticates
-  successfully and then receives `403` on every list and status call — including the delivery and
-  return endpoints the driver role exists for. That is a backend gap, tracked on their side.
-- **A `403` currently renders as success**, because of the optimistic-update behaviour in
-  [05-offline-fallback.md](05-offline-fallback.md) **O1** and the error classification in **O2**.
+**As-built Spring (do not restore the old lock-out note):** `ROLE_DRIVER` MAY call
+`/api/bookings/**`, `/api/deliveries/**`, and `/api/returns/**` (`booking-delivery-return`,
+HR-189). `ah.tan@example.sg` is a valid ops login. Other `/api/**` routes remain USER/ADMIN.
 
-**Two possible routes**, not decided here: add `roles` to `LoginResponse` (a backend contract
-change), or decode the `roles` claim from the JWT the app already holds (client-only, no contract
-change). The second needs no coordination and is available today.
+A list/status `403` is **not** applied as a local success: HR-93 withholds the local transition
+on `HttpException` ([05-offline-fallback.md](05-offline-fallback.md) **O1**). Load failures still
+use generic copy (**O2**).
 
-> **Partially resolved (customer-login-bookings-view).** The second route above — decoding
-> `roles` from the JWT client-side — is now implemented (`network/JwtClaims.kt`), and the app
-> *does* vary its UI by role for the one distinction that mattered for this feature: staff
-> (`ROLE_ADMIN`/`ROLE_DRIVER`) vs. customer (`ROLE_USER`) at the point of login routing — see
-> "After either path succeeds, the client routes by role" above and
-> [06-customer-bookings.md](06-customer-bookings.md). This does **not** resolve either bullet
-> above: `ROLE_DRIVER` is still routed to the same staff `HOME` screen as `ROLE_ADMIN` and still
-> hits the same `403`s on every list/status call once there — `isStaff()` treats admin and
-> driver as one bucket, on purpose, matching what `HOME`/Deliveries/Returns already do. Only the
-> staff/customer split was in scope here.
+### L2 — Google sign-in auto-provisions `ROLE_DRIVER` *(HR-152, corrected HR-242)*
 
-### L2 — Google sign-in always provisions `ROLE_USER` *(HR-152)*
+A first-time Google sign-in auto-creates a backend `User` row with **`role = DRIVER`**
+(Spring FR-AUTH-L-001b — this endpoint is the mobile ops sign-in path). It never auto-provisions
+`ROLE_ADMIN`. If a Google account's email matches an **existing** user (any role), Google sign-in
+links to that account and **does not change** its role.
 
-A first-time Google sign-in auto-creates a backend `User` row with `role = USER`. There is no path
-from the client to obtain `ROLE_ADMIN`/`ROLE_DRIVER` via Google — those roles remain assigned only
-through the existing admin-only `POST /api/users` endpoint. If a Google account's email matches an
-**existing** user (e.g. one seeded with `ROLE_ADMIN`), Google sign-in links to that existing account
-and its existing role, rather than creating a second row.
+An informal mobile ADR previously said first-time Google accounts were `ROLE_USER`. That is
+**false** against the Spring SoT; canonical record is [ADR-0006](../../adr/0006-google-sign-in-credential-manager.md).
 
 ---
 
@@ -351,5 +338,5 @@ to its default and returns to `LOGIN` regardless of which role was signed in.
 - [api/README.md](../api/README.md) — base URLs, endpoint summary, mock commands
 - [05-offline-fallback.md](05-offline-fallback.md) — list/status fallback after login (not login itself)
 - [project-environment.md](../project-environment.md) — OpenAPI → Mockoon generation
-- [decisions/002-mock-strategy.md](../decisions/002-mock-strategy.md) — mock layers including canned auth
-- [decisions/004-google-sign-in.md](../decisions/004-google-sign-in.md) — why Credential Manager + backend-verified ID token, not Firebase Auth
+- [ADR-0004](../../adr/0004-three-layer-mock-strategy.md) — mock layers including canned auth
+- [ADR-0006](../../adr/0006-google-sign-in-credential-manager.md) — Credential Manager + backend-verified ID token; first-time Google → `ROLE_DRIVER`
