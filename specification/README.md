@@ -1,35 +1,49 @@
-# Heavy Rental — Specification Driven Development
+# Heavy Rental Mobile — Specification Driven Development
 
-This folder is the **source of truth** for product behaviour, domain rules, and the HTTP API contract.
+This folder is **detailed product SDD** (screens, domain rules, OpenAPI). Living behavior contracts, change proposals, and architectural why live in:
+
+| Layer | Path | Standard |
+| --- | --- | --- |
+| What (behavior) | [`openspec/specs/`](../openspec/specs/) | OpenSpec `spec-driven-with-adr` |
+| How (implementation contract) | [`spdd/prompt/`](../spdd/prompt/) | OpenSPDD REASONS Canvas |
+| Why (architecture) | [`adr/`](../adr/) | MADR-short ADRs |
 
 Implementation code under `app/` must follow these specs. When behaviour changes, update the relevant spec **before or with** the code change.
 
 **Start here for the project itself:** [`00-project-overview.md`](00-project-overview.md) — purpose, actors, scope, stack, architecture.
 
+**First-time machine setup:** [`setup-guide.md`](setup-guide.md) — clone, Android Studio, emulator, Spring or mock, login.
+
+**Conflict rule:** running code / `.github/workflows/` wins, then OpenSpec specs, then this folder. Server-overlapping facts follow [`heavy-rental-spring-rest-api`](https://github.com/Heavy-Rental/heavy-rental-spring-rest-api) `openspec/specs/`.
+
+Canonical GitHub repository: `Heavy-Rental/heavy-rental-mobile`.
+
 ---
 
 ## Spec layers
 
-| Layer | Path | Purpose |
-|-------|------|---------|
-| **Project** | [`00-project-overview.md`](00-project-overview.md) | What the app is: goals, scope, actors, tech stack, architecture |
-| **Product** | [`product/`](product/) | Feature acceptance criteria (what the operator can do) |
-| **Domain** | [`domain/`](domain/) | Business rules (status machine, list filters) |
-| **API** | [`api/`](api/) | OpenAPI contract + example payloads |
-| **Decisions** | [`decisions/`](decisions/) | Architecture Decision Records (ADRs) |
-| **Environment** | [`project-environment.md`](project-environment.md) | Spec inputs vs generated Mockoon/Prism env under `mocks/` |
-| **Testing** | [`testing-guide.md`](testing-guide.md) | Manual QA: Mockoon + Postman + Android emulator |
+| Layer | Path | Purpose | OpenSpec |
+|-------|------|---------|----------|
+| **Project** | [`00-project-overview.md`](00-project-overview.md) | What the app is: goals, scope, actors, tech stack, architecture | `project-environment`, `product-features` |
+| **Product** | [`product/`](product/) | Feature acceptance criteria (what the operator/customer can do) | `product-features` |
+| **Domain** | [`domain/`](domain/) | Business rules (status machine, list filters) | `product-features` |
+| **API** | [`api/`](api/) | OpenAPI contract + example payloads | `project-environment` (ADR-0003) |
+| **Decisions** | [`decisions/`](decisions/) | Stubs → durable [`adr/`](../adr/) | ADR-0003–0006 |
+| **Environment** | [`project-environment.md`](project-environment.md) | Spec inputs vs generated Mockoon/Prism env under `mocks/` | `project-environment` |
+| **Setup** | [`setup-guide.md`](setup-guide.md) | First-time clone → Studio → emulator → API → login | `project-environment` |
+| **Testing** | [`testing-guide.md`](testing-guide.md) | Manual QA: Mockoon + Postman + Android emulator | `project-environment` |
 
 ---
 
 ## Sources of truth
 
 1. **Project context:** [`00-project-overview.md`](00-project-overview.md)
-2. **API:** [`api/heavyrental-openapi.yaml`](api/heavyrental-openapi.yaml)
-3. **Domain:** [`domain/booking-status-machine.md`](domain/booking-status-machine.md) and [`domain/list-filters.md`](domain/list-filters.md)
-4. **Product:** files under [`product/`](product/)
+2. **API (this client):** [`api/heavyrental-openapi.yaml`](api/heavyrental-openapi.yaml)
+3. **API (server):** Spring OpenSpec `auth-login-logout`, `booking-delivery-return`
+4. **Domain:** [`domain/booking-status-machine.md`](domain/booking-status-machine.md) and [`domain/list-filters.md`](domain/list-filters.md)
+5. **Product:** files under [`product/`](product/)
 
-When layers conflict, resolve in this order: **product intent → domain rules → API contract → implementation**. Then align all four.
+When layers conflict, resolve in this order: **code / YAML → OpenSpec → product intent → domain rules → OpenAPI → implementation notes**. Then align all of them.
 
 ---
 
@@ -48,12 +62,12 @@ When layers conflict, resolve in this order: **product intent → domain rules �
 
 **Runtime (dev):**
 
-- Default app target since HR-78: Spring Boot backend on host port `8080` — emulator `http://10.0.2.2:8080/`
-- Mock alternative: Mockoon or Prism on host port `8081` (OpenAPI `servers`) — emulator `http://10.0.2.2:8081/`
+- Default app target (ADR-0007): Spring Boot backend on host port `8080` — emulator `http://10.0.2.2:8080/`
+- Mock alternative: Mockoon or Prism on host port `8081` — emulator `http://10.0.2.2:8081/`
 - Selected by `USE_MOCK_SERVER` in `network/dto/RetrofitInstance.kt` (`false` = Spring Boot)
-- Auth: interim → access JWT via `/api/auth/*` ([product/01-login.md](product/01-login.md))
-- In-app booking seed: `MockDataRepository.bookingList` (used until API succeeds, and as fallback on list/status failure)
-- List load on shell start: `AppViewModel.loadData()` → `GET /api/deliveries`, `GET /api/returns` (and bookings) via `LaunchedEffect` in `HeavyRentalApp`
+- Auth: interim → access JWT via `/api/auth/*`; Google via `/api/auth/google` (not on mock)
+- In-app booking seed: `MockDataRepository.bookingList` (until API succeeds, and as fallback on list/status failure)
+- List load on shell start: `AppViewModel.loadData()` → `GET /api/deliveries`, `GET /api/returns` (and bookings)
 
 ---
 
@@ -61,19 +75,23 @@ When layers conflict, resolve in this order: **product intent → domain rules �
 
 For every feature or behaviour change:
 
-1. Update the **product** scenario(s)
-2. Update **domain** rules if business logic changes
-3. Update **OpenAPI** + examples if the network contract changes
-4. Refresh mocks (Mockoon / Prism / fixtures) from the API examples
-5. Implement app code
-6. Add or adjust tests (domain unit tests, MockWebServer contract tests)
+1. OpenSpec change folder (`proposal → specs → design → adr → tasks`) when behavior or architecture changes
+2. Update the **product** scenario(s)
+3. Update **domain** rules if business logic changes
+4. Update **OpenAPI** + examples if the network contract changes
+5. Refresh mocks (Mockoon / Prism / fixtures) from the API examples
+6. Implement app code
+7. Add or adjust tests (domain unit tests, MockWebServer contract tests)
+8. Update the OpenSPDD canvas if the implementation contract changed
 
 ### Checklist (PR)
 
+- [ ] OpenSpec delta (if observable behavior/architecture)
 - [ ] Product scenario updated (if user-visible)
 - [ ] Domain rule updated (if status/filter logic)
 - [ ] OpenAPI + examples updated (if API)
 - [ ] Mock still matches contract (`npm run mock:prepare` / `mock:verify`)
+- [ ] In-force ADRs not contradicted
 - [ ] Tests pass
 - [ ] App verified against mock or real API
 
@@ -83,7 +101,7 @@ For every feature or behaviour change:
 
 | Goal | Tool | Driven by |
 |------|------|-----------|
-| Run full app against fake HTTP | Mockoon or Prism on port `8081` | OpenAPI + `api/examples/` (includes canned auth) |
+| Run full app against fake HTTP | Mockoon or Prism on port `8081` | OpenAPI + `api/examples/` (includes canned auth; **no Google**) |
 | Automated client tests | OkHttp MockWebServer | Same JSON examples / schemas |
 | Booking lists without server | `MockDataRepository` | Domain examples (seed/fallback only — **not** auth) |
 
@@ -99,7 +117,7 @@ Full instructions: [`mocks/README.md`](../mocks/README.md).
 
 **Manual QA (Mockoon + Postman + Android):** [`testing-guide.md`](testing-guide.md).
 
-See [decisions/002-mock-strategy.md](decisions/002-mock-strategy.md).
+See [ADR-0004](../adr/0004-three-layer-mock-strategy.md).
 
 ---
 
@@ -109,10 +127,11 @@ Documented honestly so specs do not over-claim:
 
 | Topic | Current behaviour | Spec stance |
 |-------|-------------------|-------------|
-| Auth | Interim → access JWT via OpenAPI Auth routes; Mockoon returns canned tokens (no password/JWT verification); tokens in memory only | API auth is in scope; real credential checks need Spring (or contract tests); secure storage is future |
+| Auth | Interim → access JWT via OpenAPI Auth routes; Mockoon returns canned tokens (no password/JWT verification); tokens in memory only; Google requires Spring | API auth is in scope; real credential checks need Spring; secure storage is future |
 | List data | ViewModel loads `GET /api/deliveries` and `GET /api/returns`; seed uses client domain filters | Server/mock owns today membership for list GETs; client seed-only derive when offline |
-| Status updates | Optimistic local update even if PATCH fails | Required product behaviour (see offline fallback) |
+| Status updates | Optimistic local update only on `IOException`; `HttpException` leaves status unchanged (HR-93) | Required product behaviour (see offline fallback) |
 | Persistence | No Room / offline queue | In-memory state only for v1 |
+| Env toggle | `USE_MOCK_SERVER` is a committed constant | Known gap; do not flip to `true` on `develop` |
 
 ---
 
@@ -123,6 +142,7 @@ specification/
   README.md
   00-project-overview.md
   project-environment.md
+  setup-guide.md
   testing-guide.md
   product/
     01-login.md
@@ -146,8 +166,10 @@ specification/
       interim-token.txt
       login-response.json
       logout-response.json
-  decisions/
+      google-login-request.json
+  decisions/          # stubs → ../adr/
     001-openapi-as-api-source.md
     002-mock-strategy.md
     003-mock-echoes-return-notes.md
+    004-google-sign-in.md
 ```

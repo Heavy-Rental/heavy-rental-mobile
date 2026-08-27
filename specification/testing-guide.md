@@ -4,7 +4,7 @@
 **Audience:** Developers verifying the mobile app against the local mock API  
 **Scope:** Manual QA only (not unit/UI automations)
 
-This guide is **how to run and verify**. Expected product behaviour remains in [`product/`](product/); HTTP shapes remain in [`api/heavyrental-openapi.yaml`](api/heavyrental-openapi.yaml). Mock generation details: [`project-environment.md`](project-environment.md) and [`mocks/README.md`](../mocks/README.md).
+This guide is **how to run and verify**. First-time clone and IDE setup: [`setup-guide.md`](setup-guide.md). Expected product behaviour remains in [`product/`](product/); HTTP shapes remain in [`api/heavyrental-openapi.yaml`](api/heavyrental-openapi.yaml). Mock generation details: [`project-environment.md`](project-environment.md) and [`mocks/README.md`](../mocks/README.md).
 
 ---
 
@@ -29,15 +29,15 @@ This guide is **how to run and verify**. Expected product behaviour remains in [
 App default since HR-78: `com.heavyrental.network.RetrofitInstance` → `http://10.0.2.2:8080/`
 (`USE_MOCK_SERVER = false`). Set it to `true` for the Mockoon column.
 
-> **Before testing against Spring Boot:** the seven booking/delivery/return routes exist only on the
-> backend branch `HR-80` (`SPEC-api-index.md` §2.2) — on its `develop` they return `404`. Confirm first:
+> **Before testing against Spring Boot:** booking/delivery/return routes exist on Spring `develop`.
+> Confirm the API is up:
 >
 > ```bash
 > curl -i -s http://localhost:8080/api/bookings -H "Authorization: Bearer $ACCESS"
 > ```
 >
-> A `404` means the backend is on the wrong branch, not that your setup is broken. The app currently
-> reports it as a connectivity failure — see [05-offline-fallback.md](product/05-offline-fallback.md) O2.
+> A `404` means a wrong base URL or an old backend image, not “you must check out HR-80”. The app
+> currently reports HTTP list failures as a connectivity failure — see [05-offline-fallback.md](product/05-offline-fallback.md) O2.
 
 ---
 
@@ -248,7 +248,7 @@ Product transition: `CONFIRMED` → `MOBILISED` — [product/03-deliveries.md](p
 
 **Expect:** `200`. Unlike other PATCH routes, the response **echoes back** the `returnNotes` (and
 `bookingStatus`) you sent instead of a fixed value — try changing the note and re-sending to confirm
-([ADR 003](decisions/003-mock-echoes-return-notes.md)). Product: [product/04-returns.md](product/04-returns.md).
+([ADR-0005](../adr/0005-mockoon-echoes-return-notes.md)). Product: [product/04-returns.md](product/04-returns.md).
 
 ---
 
@@ -382,7 +382,7 @@ AUTH_ERROR
 
 Use this as a short QA pass:
 
-- [ ] Target is running: backend on `HR-80` (`curl` returns non-`404`), **or** `npm run mock:mockoon` without errors  
+- [ ] Target is running: Spring Boot on `:8080` (`curl` returns non-`404` on `/api/bookings` with a Bearer), **or** `npm run mock:mockoon` without errors  
 - [ ] `npm run mock:verify` passes **or** curl shows non-empty `/api/deliveries`  
 - [ ] Postman: auth handshake works; deliveries/returns/bookings return data  
 - [ ] Postman: PATCH delivery/return status returns 200  
@@ -427,6 +427,6 @@ Use this as a short QA pass:
 | [product/03-deliveries.md](product/03-deliveries.md) | Delivery List + mobilise |
 | [product/04-returns.md](product/04-returns.md) | Return List + complete |
 | [product/05-offline-fallback.md](product/05-offline-fallback.md) | Seed + error banner |
-| [decisions/002-mock-strategy.md](decisions/002-mock-strategy.md) | Why Mockoon / Prism / seed |
-| [decisions/003-mock-echoes-return-notes.md](decisions/003-mock-echoes-return-notes.md) | Why the return-status route echoes `returnNotes` |
+| [ADR-0004](../adr/0004-three-layer-mock-strategy.md) | Why Mockoon / Prism / seed |
+| [ADR-0005](../adr/0005-mockoon-echoes-return-notes.md) | Why the return-status route echoes `returnNotes` |
 | [00-project-overview.md](00-project-overview.md) | Stack and runtime URLs |

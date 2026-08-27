@@ -13,7 +13,7 @@ This document describes **the project itself**: purpose, users, scope, architect
 
 **Heavy Rental** is an Android operations app for a heavy-equipment hire business. Operators use it to manage **today’s** equipment **deliveries** (mobilisation) and **returns** (completion of hire), with a simple dashboard after login.
 
-The app is built with **Specification Driven Development (SDD)**: product scenarios, domain rules, and an OpenAPI contract in this folder are the source of truth for implementation under `app/`.
+The app is built with **Specification Driven Development**: product scenarios and OpenAPI in this folder are the detailed SDD. Living behavior is OpenSpec (`openspec/specs/`); architecture why is `adr/`; implementation contracts are OpenSPDD (`spdd/prompt/`). Implementation under `app/` MUST follow those layers (ADR-0001).
 
 ---
 
@@ -25,7 +25,7 @@ The app is built with **Specification Driven Development (SDD)**: product scenar
 | **Mobilise deliveries** | Mark confirmed bookings as mobilised when equipment is sent out |
 | **Complete returns** | Mark mobilised bookings as completed when equipment is returned |
 | **Field-friendly** | Open project locations in maps; remain usable if the API is down |
-| **Demo-ready without backend** | In-app seed data + OpenAPI-driven Mockoon/Prism on port `8081` (app default base URL) |
+| **Demo-ready without backend** | In-app seed data + OpenAPI-driven Mockoon/Prism on port `8081` (opt-in; app default is Spring `:8080`) |
 
 ---
 
@@ -34,13 +34,13 @@ The app is built with **Specification Driven Development (SDD)**: product scenar
 | Actor | Role |
 |-------|------|
 | **Admin / operator** | Field or office staff who log in, review today’s lists, mobilise deliveries, and complete returns |
-| **Customer** | The customer on a booking, who logs in with the same screen (password only) to view — never edit — their own bookings and each one's status |
+| **Customer** | The customer on a booking, who logs in with the same screen (**password only**) to view — never edit — their own bookings and each one's status |
 
-Authentication is via the HTTP interim → access JWT flow, shared by both actors. Which screen a
+Authentication is via the HTTP interim → access JWT flow, shared by both actors (staff may also use Google Sign-In). Which screen a
 session lands on is decided client-side from the access token's `roles` claim — see
 [product/01-login.md](product/01-login.md) "Role routing" and
 [product/06-customer-bookings.md](product/06-customer-bookings.md). Beyond that one staff/customer
-routing split, there is still no broader in-app roles/permissions model.
+routing split, there is still no broader in-app roles/permissions model. Server authorization: `ROLE_ADMIN` and `ROLE_DRIVER` may call bookings/deliveries/returns (Spring `booking-delivery-return`).
 
 ---
 
@@ -48,7 +48,7 @@ routing split, there is still no broader in-app roles/permissions model.
 
 | Area | Capability |
 |------|------------|
-| Auth | Interim → access JWT login / logout over HTTP (`/api/auth/*`); in-memory session |
+| Auth | Interim → access JWT login / logout over HTTP (`/api/auth/*`); Google Sign-In (`POST /api/auth/google`, Spring only); in-memory session |
 | Home | Today’s delivery and return counts by status |
 | Deliveries | Today’s list, filter by status, maps, mobilise (`CONFIRMED` → `MOBILISED`) |
 | Returns | Today’s list, filter by status, maps, complete (`MOBILISED` → `COMPLETED`) |
@@ -87,7 +87,7 @@ Details: [domain/booking-status-machine.md](domain/booking-status-machine.md), [
 
 Product-level exclusions (see also per-feature “Out of scope” sections):
 
-- Any client-side roles/permissions model beyond the staff/customer login routing split (see Actors above); MFA, password reset, biometric login, secure token storage
+- Any client-side roles/permissions model beyond the staff/customer login routing split (see Actors above); MFA, password reset, biometric login, secure token storage; customer entry via Google Sign-In
 - Offline / client-only login without a reachable auth API
 - Historical (non-today) dashboards and analytics
 - Rescheduling dates, partial quantity, damage inspection, late fees
@@ -109,7 +109,7 @@ Product-level exclusions (see also per-feature “Out of scope” sections):
 | Navigation | Simple shell (`AppScreen` enum) + bottom bar after login |
 | Networking | Retrofit + OkHttp + kotlinx.serialization |
 | API contract | OpenAPI 3 (`specification/api/heavyrental-openapi.yaml`) |
-| Local mocks | `MockDataRepository` (booking seed); Mockoon / Prism on port `8081` (default HTTP) |
+| Local mocks | `MockDataRepository` (booking seed); Mockoon / Prism on port `8081` (opt-in HTTP) |
 
 ### High-level architecture
 
@@ -152,7 +152,10 @@ Product-level exclusions (see also per-feature “Out of scope” sections):
 | Path | Role |
 |------|------|
 | `app/` | Android application |
-| `specification/` | SDD source of truth (this folder) |
+| `specification/` | Detailed product SDD (this folder) |
+| `openspec/` | Living behavior contracts (OpenSpec) |
+| `adr/` | Durable architecture decisions |
+| `spdd/` | OpenSPDD REASONS canvases |
 | `mocks/` | Generated Mockoon env + Prism bundle (from API specs) |
 | `scripts/` | `prepare-mocks`, start Prism/Mockoon, verify |
 | `package.json` | Node tooling for mocks only |
@@ -184,7 +187,7 @@ Aligned with OpenAPI `LoginRequest` examples and the Login screen seed hint. Ful
 | Host machine / curl | `http://localhost:8080/` | `http://localhost:8081/` |
 | Physical device | `http://<host-lan-ip>:8080/` | `http://<host-lan-ip>:8081/` |
 
-Selected by `USE_MOCK_SERVER` in `network/dto/RetrofitInstance.kt` (`false` = Spring Boot). Note the booking/delivery/return routes exist only on the backend branch `HR-80` — see [product/05-offline-fallback.md](product/05-offline-fallback.md).
+Selected by `USE_MOCK_SERVER` in `network/dto/RetrofitInstance.kt` (`false` = Spring Boot). Booking/delivery/return routes exist on Spring `develop` (OpenSpec `booking-delivery-return`) — do not treat them as `HR-80`-only.
 
 Mock servers and regeneration: [api/README.md](api/README.md), [project-environment.md](project-environment.md), [`mocks/README.md`](../mocks/README.md).
 
@@ -198,12 +201,15 @@ Mock servers and regeneration: [api/README.md](api/README.md), [project-environm
 | Feature acceptance criteria | [product/](product/) |
 | Status machine / list filters | [domain/](domain/) |
 | HTTP paths and schemas | [api/heavyrental-openapi.yaml](api/heavyrental-openapi.yaml) |
-| Why OpenAPI / mock layers | [decisions/](decisions/) |
+| Why OpenAPI / mock layers / Google / HTTP target | [`adr/`](../adr/) (stubs in [decisions/](decisions/)) |
 | What is generated for mocks | [project-environment.md](project-environment.md) |
 | SDD workflow and PR checklist | [README.md](README.md) |
-| Mockoon + Postman + Android testing | [testing-guide.md](testing-guide.md) |
+| Living behavior (OpenSpec) | [`openspec/specs/`](../openspec/specs/) |
+| Implementation contract (OpenSPDD) | [`spdd/prompt/`](../spdd/prompt/) |
+| First-time clone and run | [setup-guide.md](setup-guide.md) |
+| Mockoon + Postman + Android testing | [testing-guide.md](testing-guide.md)
 
-**Conflict resolution order:** product intent → domain rules → API contract → implementation (then align all four).
+**Conflict resolution order:** running code / workflow YAML → OpenSpec → product intent → domain rules → API contract (then align all of them). Server facts: Spring OpenSpec.
 
 ---
 
@@ -211,7 +217,7 @@ Mock servers and regeneration: [api/README.md](api/README.md), [project-environm
 
 | Topic | Current behaviour |
 |-------|-------------------|
-| Auth | API handshake implemented; Mockoon returns canned tokens (no credential check); no secure token storage |
+| Auth | API handshake implemented; Mockoon returns canned tokens (no credential check); Google requires Spring; no secure token storage |
 | List data | Loaded from `GET /api/deliveries` / `GET /api/returns`; seed derive only offline |
 | Status updates | Optimistic local update if PATCH fails |
 | Persistence | In-memory only (no Room / offline queue) |

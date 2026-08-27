@@ -9,7 +9,7 @@ Do **not** hand-edit files under `mocks/.generated/` or treat the Mockoon enviro
 
 ## Prerequisites
 
-- Node.js 18+ (project verified with Node 26)
+- Node.js 18+ locally (CI mock contract tests use Node 22)
 - From the repo root:
 
 ```bash
@@ -34,6 +34,8 @@ Regenerate assets without starting a server:
 npm run mock:prepare
 ```
 
+First-time clone and Android Studio: [`specification/setup-guide.md`](../specification/setup-guide.md).
+
 ## Full manual QA guide
 
 Step-by-step Mockoon + **Postman** + **Android** walkthrough (checklists, auth sequence, troubleshooting):
@@ -42,19 +44,19 @@ Step-by-step Mockoon + **Postman** + **Android** walkthrough (checklists, auth s
 
 ## Android app
 
-`RetrofitInstance` uses:
+Default `RetrofitInstance` target is Spring Boot (`USE_MOCK_SERVER = false`):
 
 ```text
-http://10.0.2.2:8081/
+http://10.0.2.2:8080/
 ```
 
-That is the emulator’s alias for the host machine’s `localhost:8081`.
+Set `USE_MOCK_SERVER = true` to use the mock on `:8081` (emulator alias for host `localhost:8081`).
 
-| Client | URL |
-|--------|-----|
-| Emulator | `http://10.0.2.2:8081/` |
-| Host browser / curl | `http://127.0.0.1:8081/` |
-| Physical device | `http://<your-lan-ip>:8081/` (update app base URL) |
+| Client | Spring (default) | Mockoon / Prism |
+|--------|------------------|-----------------|
+| Emulator | `http://10.0.2.2:8080/` | `http://10.0.2.2:8081/` |
+| Host browser / curl | `http://127.0.0.1:8080/` | `http://127.0.0.1:8081/` |
+| Physical device | `http://<your-lan-ip>:8080/` | `http://<your-lan-ip>:8081/` |
 
 ## Verify
 
@@ -116,4 +118,4 @@ $env:MOCK_PORT=8081; npm run mock:prism
 ## Related specs
 
 - [specification/api/README.md](../specification/api/README.md)
-- [specification/decisions/002-mock-strategy.md](../specification/decisions/002-mock-strategy.md)
+- [ADR-0004](../adr/0004-three-layer-mock-strategy.md)

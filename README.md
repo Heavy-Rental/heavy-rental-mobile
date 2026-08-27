@@ -1,270 +1,125 @@
-<!-- Improved compatibility of back to top link: See: https://github.com/othneildrew/Best-README-Template/pull/73 -->
-<a name="readme-top"></a>
-<!--
-*** Thanks for checking out the Best-README-Template. If you have a suggestion
-*** that would make this better, please fork the repo and create a pull request
-*** or simply open an issue with the tag "enhancement".
-*** Don't forget to give the project a star!
-*** Thanks again! Now go create something AMAZING! :D
--->
-
-
-
-<!-- PROJECT SHIELDS -->
-<!--
-*** I'm using markdown "reference style" links for readability.
-*** Reference links are enclosed in brackets [ ] instead of parentheses ( ).
-*** See the bottom of this document for the declaration of the reference variables
-*** for contributors-url, forks-url, etc. This is an optional, concise syntax you may use.
-*** https://www.markdownguide.org/basic-syntax/#reference-style-links
--->
-[![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![MIT License][license-shield]][license-url]
-[![LinkedIn][linkedin-shield]][linkedin-url]
-
+# Heavy Rental Mobile
 
+Android operations app for a heavy-equipment hire business. Operators manage **today’s deliveries** (mobilise) and **returns** (complete hire). Customers who sign in with email/password see a **read-only** list of their own bookings.
 
-<!-- PROJECT LOGO -->
-<br />
-<div align="center">
-  <a href="https://github.com/othneildrew/Best-README-Template">
-    <img src="images/logo.png" alt="Logo" width="80" height="80">
-  </a>
+Canonical GitHub repository: [`Heavy-Rental/heavy-rental-mobile`](https://github.com/Heavy-Rental/heavy-rental-mobile).
 
-  <h3 align="center">Best-README-Template</h3>
+| Item | Value |
+|------|--------|
+| **Application id** | `com.heavyrental` |
+| **Package** | `com.heavyrental` |
+| **Stack** | Kotlin · Jetpack Compose · Material 3 · Retrofit |
+| **minSdk / targetSdk** | 26 / 35 |
+| **Default API** | Spring Boot `http://10.0.2.2:8080/` (emulator) |
+| **Behavior SoT** | OpenSpec [`openspec/specs/`](openspec/specs/) |
 
-  <p align="center">
-    An awesome README template to jumpstart your projects!
-    <br />
-    <a href="https://github.com/othneildrew/Best-README-Template"><strong>Explore the docs »</strong></a>
-    <br />
-    <br />
-    <a href="https://github.com/othneildrew/Best-README-Template">View Demo</a>
-    ·
-    <a href="https://github.com/othneildrew/Best-README-Template/issues">Report Bug</a>
-    ·
-    <a href="https://github.com/othneildrew/Best-README-Template/issues">Request Feature</a>
-  </p>
-</div>
-
-
-
-<!-- TABLE OF CONTENTS -->
-<details>
-  <summary>Table of Contents</summary>
-  <ol>
-    <li>
-      <a href="#about-the-project">About The Project</a>
-      <ul>
-        <li><a href="#built-with">Built With</a></li>
-      </ul>
-    </li>
-    <li>
-      <a href="#getting-started">Getting Started</a>
-      <ul>
-        <li><a href="#prerequisites">Prerequisites</a></li>
-        <li><a href="#installation">Installation</a></li>
-      </ul>
-    </li>
-    <li><a href="#usage">Usage</a></li>
-    <li><a href="#roadmap">Roadmap</a></li>
-    <li><a href="#contributing">Contributing</a></li>
-    <li><a href="#license">License</a></li>
-    <li><a href="#contact">Contact</a></li>
-    <li><a href="#acknowledgments">Acknowledgments</a></li>
-  </ol>
-</details>
+## Features (v1)
 
+- **Staff login** — email/password or Google Sign-In (Credential Manager); interim → access JWT
+- **Home dashboard** — today’s delivery and return counts by status
+- **Deliveries** — today’s list, status chips, maps, mobilise (`CONFIRMED` → `MOBILISED`)
+- **Returns** — today’s list, status chips, maps, complete (`MOBILISED` → `COMPLETED`) with optional notes
+- **Customer bookings** — password `ROLE_USER` sessions only; read-only `GET /api/bookings`
+- **Offline fallback** — in-app seed + optimistic status when the API is unreachable after login
 
+### Demo accounts (Spring `data.sql`)
 
-<!-- ABOUT THE PROJECT -->
-## About The Project
+| Email | Password | Role | Lands on |
+|-------|----------|------|----------|
+| `admin@localhost` | `admin1234` | ADMIN | Home |
+| `ah.tan@example.sg` | `driver123` | DRIVER | Home |
+| `alex.tan@example.sg` | `customer123` | USER | Customer bookings |
 
-[![Product Name Screen Shot][product-screenshot]](https://example.com)
+Google Sign-In requires the real Spring backend, a Google Play emulator image, and a test user in Google Cloud Console. First-time Google accounts are provisioned as **`ROLE_DRIVER`** (never `ROLE_ADMIN`). See [specification/product/01-login.md](specification/product/01-login.md).
 
-There are many great README templates available on GitHub; however, I didn't find one that really suited my needs so I created this enhanced one. I want to create a README template so amazing that it'll be the last one you ever need -- I think this is it.
+## Stack
 
-Here's why:
-* Your time should be focused on creating something amazing. A project that solves a problem and helps others
-* You shouldn't be doing the same tasks over and over like creating a README from scratch
-* You should implement DRY principles to the rest of your life :smile:
+- Kotlin (JVM 17), Android Gradle Plugin 9.2, Gradle 9.6
+- Jetpack Compose + Material 3
+- Retrofit 2 + OkHttp + kotlinx.serialization
+- AndroidX Credentials + Google Identity for Sign in with Google
+- Node.js (CI: 22) only for OpenAPI mock tooling (Prism / Mockoon)
 
-Of course, no one template will serve all projects since your needs may be different. So I'll be adding more in the near future. You may also suggest changes by forking this repo and creating a pull request or opening an issue. Thanks to all the people have contributed to expanding this template!
+## Documentation
 
-Use the `BLANK_README.md` to get started.
+| Layer | Path | Standard |
+| --- | --- | --- |
+| Behavior (what) | [`openspec/specs/`](openspec/specs/) | OpenSpec `spec-driven-with-adr` |
+| Design contract (how) | [`spdd/prompt/`](spdd/prompt/) | OpenSPDD REASONS Canvas |
+| Architecture (why) | [`adr/`](adr/) | MADR-short ADRs |
+| Feature SDD | [`specification/`](specification/) | Product, domain, OpenAPI + [index](specification/README.md) |
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+Conflict rule: **running code / workflow YAML**, then **OpenSpec specs**, then **`specification/`**. Fix the stale file in the same change.
 
+Backend contracts: [`Heavy-Rental/heavy-rental-spring-rest-api`](https://github.com/Heavy-Rental/heavy-rental-spring-rest-api) (`openspec/specs/`). Local packs: [`Heavy-Rental/heavy-rental-devcontainer-configuration`](https://github.com/Heavy-Rental/heavy-rental-devcontainer-configuration). Portal: [`Heavy-Rental/heavy-rental-react-web-portal`](https://github.com/Heavy-Rental/heavy-rental-react-web-portal).
 
+## Quick start
 
-### Built With
+**Full walkthrough (clone → Android Studio → emulator → Spring → login):** [`specification/setup-guide.md`](specification/setup-guide.md).
 
-This section should list any major frameworks/libraries used to bootstrap your project. Leave any add-ons/plugins for the acknowledgements section. Here are a few examples.
+### Android app (default: Spring Boot on host `:8080`)
 
-* [![Next][Next.js]][Next-url]
-* [![React][React.js]][React-url]
-* [![Vue][Vue.js]][Vue-url]
-* [![Angular][Angular.io]][Angular-url]
-* [![Svelte][Svelte.dev]][Svelte-url]
-* [![Laravel][Laravel.com]][Laravel-url]
-* [![Bootstrap][Bootstrap.com]][Bootstrap-url]
-* [![JQuery][JQuery.com]][JQuery-url]
+1. Run [`heavy-rental-spring-rest-api`](https://github.com/Heavy-Rental/heavy-rental-spring-rest-api) on port `8080`.
+2. Open this repo in Android Studio.
+3. Start an emulator (Google Play image if you need Google Sign-In).
+4. Run the `app` configuration.
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+`USE_MOCK_SERVER` in `app/src/main/java/com/heavyrental/network/dto/RetrofitInstance.kt` selects the target (`false` = `:8080`, `true` = Mockoon/Prism `:8081`).
 
+### Mock API (optional)
 
+```bash
+npm install
+npm run mock:prism      # or: npm run mock:mockoon
+npm run mock:verify
+```
 
-<!-- GETTING STARTED -->
-## Getting Started
+Then set `USE_MOCK_SERVER = true`. Google Sign-In is **not** implemented on the mock. Details: [`mocks/README.md`](mocks/README.md), [`specification/testing-guide.md`](specification/testing-guide.md).
 
-This is an example of how you may give instructions on setting up your project locally.
-To get a local copy up and running follow these simple example steps.
+### Tests
 
-### Prerequisites
+```bash
+./gradlew testDebugUnitTest
+```
 
-This is an example of how to list things you need to use the software and how to install them.
-* npm
-  ```sh
-  npm install npm@latest -g
-  ```
+## Project layout
 
-### Installation
+```text
+app/src/main/java/com/heavyrental/
+  MainActivity.kt              # Compose shell
+  navigation/AppScreen.kt      # LOGIN, HOME, DELIVERIES, RETURNS, CUSTOMER_BOOKINGS
+  viewmodel/AppViewModel.kt    # Auth, lists, status transitions
+  ui/screens/                  # Login, Home, Deliveries, Returns, Customer bookings
+  data/models/                 # Booking, status machine, list filters
+  data/repository/             # Auth, Booking, MockData seed
+  network/                     # Retrofit, JWT claims, TokenSession
+specification/                 # Product SDD, domain, OpenAPI
+openspec/                      # Living behavior contracts
+adr/                           # Durable architecture decisions
+spdd/                          # OpenSPDD REASONS canvases
+mocks/                         # Generated Mockoon env (from OpenAPI)
+.github/workflows/             # Fast Feedback, CI, Release
+```
 
-_Below is an example of how you can instruct your audience on installing and setting up your app. This template doesn't rely on any external dependencies or services._
+## Delivery pipelines (summary)
 
-1. Get a free API Key at [https://example.com](https://example.com)
-2. Clone the repo
-   ```sh
-   git clone https://github.com/your_username_/Project-Name.git
-   ```
-3. Install NPM packages
-   ```sh
-   npm install
-   ```
-4. Enter your API in `config.js`
-   ```js
-   const API_KEY = 'ENTER YOUR API';
-   ```
+GitHub Flow: feature branch → PR into `develop` (CI) → merge to `develop` → manual **Release**.
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+| Workflow | Trigger | What it runs |
+|----------|---------|----------------|
+| **Fast Feedback** | Push to branches other than `master`/`develop` | Integration only |
+| **CI** | PR / push to `develop` | Integration (reuses Fast Feedback when possible), QC, Security, CodeQL, Mock contract tests |
+| **Release** | Manual `workflow_dispatch` | Integration, QC, unsigned APK, DAST, GitHub Release (no GHCR / Play) |
 
+Defaults: JDK 17, compile SDK 35, Node 22 for mock contract tests, `DEFAULT_APP_REPOSITORY=Heavy-Rental/heavy-rental-mobile`. Callers: `mobile-fast-feedback-caller.yml`, `mobile-ci-caller.yml`, `mobile-release-caller.yml`.
 
+`.github/workflows/android-ci.yml` is a **legacy leftover** from HR-157 (push/PR to `develop`/`main`). It is **not** the GitHub Flow source of truth.
 
-<!-- USAGE EXAMPLES -->
-## Usage
+This repository does **not** ship Portal-style Academy/paid CD.
 
-Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
+## Related
 
-_For more examples, please refer to the [Documentation](https://example.com)_
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- ROADMAP -->
-## Roadmap
-
-- [x] Add Changelog
-- [x] Add back to top links
-- [ ] Add Additional Templates w/ Examples
-- [ ] Add "components" document to easily copy & paste sections of the readme
-- [ ] Multi-language Support
-    - [ ] Chinese
-    - [ ] Spanish
-
-See the [open issues](https://github.com/othneildrew/Best-README-Template/issues) for a full list of proposed features (and known issues).
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- CONTRIBUTING -->
-## Contributing
-
-Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
-
-If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement".
-Don't forget to give the project a star! Thanks again!
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- LICENSE -->
-## License
-
-Distributed under the MIT License. See `LICENSE.txt` for more information.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- CONTACT -->
-## Contact
-
-Your Name - [@your_twitter](https://twitter.com/your_username) - email@example.com
-
-Project Link: [https://github.com/your_username/repo_name](https://github.com/your_username/repo_name)
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- ACKNOWLEDGMENTS -->
-## Acknowledgments
-
-Use this space to list resources you find helpful and would like to give credit to. I've included a few of my favorites to kick things off!
-
-* [Choose an Open Source License](https://choosealicense.com)
-* [GitHub Emoji Cheat Sheet](https://www.webpagefx.com/tools/emoji-cheat-sheet)
-* [Malven's Flexbox Cheatsheet](https://flexbox.malven.co/)
-* [Malven's Grid Cheatsheet](https://grid.malven.co/)
-* [Img Shields](https://shields.io)
-* [GitHub Pages](https://pages.github.com)
-* [Font Awesome](https://fontawesome.com)
-* [React Icons](https://react-icons.github.io/react-icons/search)
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- MARKDOWN LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/othneildrew/Best-README-Template.svg?style=for-the-badge
-[contributors-url]: https://github.com/othneildrew/Best-README-Template/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/othneildrew/Best-README-Template.svg?style=for-the-badge
-[forks-url]: https://github.com/othneildrew/Best-README-Template/network/members
-[stars-shield]: https://img.shields.io/github/stars/othneildrew/Best-README-Template.svg?style=for-the-badge
-[stars-url]: https://github.com/othneildrew/Best-README-Template/stargazers
-[issues-shield]: https://img.shields.io/github/issues/othneildrew/Best-README-Template.svg?style=for-the-badge
-[issues-url]: https://github.com/othneildrew/Best-README-Template/issues
-[license-shield]: https://img.shields.io/github/license/othneildrew/Best-README-Template.svg?style=for-the-badge
-[license-url]: https://github.com/othneildrew/Best-README-Template/blob/master/LICENSE.txt
-[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
-[linkedin-url]: https://linkedin.com/in/othneildrew
-[product-screenshot]: images/screenshot.png
-[Next.js]: https://img.shields.io/badge/next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white
-[Next-url]: https://nextjs.org/
-[React.js]: https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB
-[React-url]: https://reactjs.org/
-[Vue.js]: https://img.shields.io/badge/Vue.js-35495E?style=for-the-badge&logo=vuedotjs&logoColor=4FC08D
-[Vue-url]: https://vuejs.org/
-[Angular.io]: https://img.shields.io/badge/Angular-DD0031?style=for-the-badge&logo=angular&logoColor=white
-[Angular-url]: https://angular.io/
-[Svelte.dev]: https://img.shields.io/badge/Svelte-4A4A55?style=for-the-badge&logo=svelte&logoColor=FF3E00
-[Svelte-url]: https://svelte.dev/
-[Laravel.com]: https://img.shields.io/badge/Laravel-FF2D20?style=for-the-badge&logo=laravel&logoColor=white
-[Laravel-url]: https://laravel.com
-[Bootstrap.com]: https://img.shields.io/badge/Bootstrap-563D7C?style=for-the-badge&logo=bootstrap&logoColor=white
-[Bootstrap-url]: https://getbootstrap.com
-[JQuery.com]: https://img.shields.io/badge/jQuery-0769AD?style=for-the-badge&logo=jquery&logoColor=white
-[JQuery-url]: https://jquery.com 
+- Setup guide: [`specification/setup-guide.md`](specification/setup-guide.md)
+- Product index: [`specification/README.md`](specification/README.md)
+- OpenSpec reading order: [`openspec/AGENTS.md`](openspec/AGENTS.md)
+- ADRs: [`adr/README.md`](adr/README.md)

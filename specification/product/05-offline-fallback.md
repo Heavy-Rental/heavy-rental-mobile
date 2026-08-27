@@ -156,9 +156,10 @@ private const val USE_MOCK_SERVER = false   // true = Mockoon 8081, false = Spri
 
 Cleartext HTTP is used in dev; see `res/xml/network_security_config.xml`.
 
-> **Backend availability.** The seven booking/delivery/return routes exist only on the backend branch
-> `HR-80`, not on its `develop` (`SPEC-api-index.md` §2.2). Against a `develop` backend they return
-> `404`, which this app currently reports as a connectivity failure — see **O2** below.
+> **Backend availability.** Booking/delivery/return routes exist on Spring `develop`
+> (`openspec/specs/booking-delivery-return/`). A `404` on those paths is a misconfigured
+> backend or wrong base URL — not “you are not on branch HR-80”. Load `404`s still render as
+> generic connectivity failures until **O2** is fixed.
 
 > **Environment selection is a tracked source edit** *(ticket: TBD)*. `USE_MOCK_SERVER` is a
 > committed constant, so the wrong value will eventually be pushed. A properties-based approach
@@ -201,10 +202,10 @@ locally after a failed PATCH could only ever mean "the network was down", never 
 no" — and keeping the app usable in the field was the point of this feature.
 
 **What changed:** the Spring backend enforces the same two transitions server-side and returns
-`400` on anything else (`SPEC-booking-delivery-return-api.md` §4, Requirements 4.2 and 6), and
-`ROLE_DRIVER` is excluded from every protected route today (`SPEC-api-index.md` §4), so a driver's
-status update returns `403`. Both are now `HttpException`s and are correctly rejected rather than
-silently applied as they were pre-HR-93.
+`400` on anything else (Spring `booking-delivery-return` FR-BDR-004/006). `ROLE_DRIVER` **is**
+allowed on deliveries/returns; a `403` here means a customer token or a missing authority, not
+“drivers are locked out”. HTTP rejections are `HttpException`s and are not applied locally
+(pre-HR-93 they were).
 
 **Residual gap — depends on O2:** the split is by exception type, not by HTTP status code, so a
 driver's `403` and a genuine `400` invalid-transition both read as "rejected by server" with only
@@ -223,8 +224,8 @@ re-opened here.
 
 `loadData()` and the status-update path catch bare `Exception`, so an `HttpException` (`400`,
 `403`, `404`) is indistinguishable from an `IOException` (host unreachable). Both render the
-"Could not reach API — showing mock data" copy specified above. A `404` from a backend running
-`develop` instead of `HR-80` has already been misdiagnosed as a Docker networking problem.
+"Could not reach API — showing mock data" copy specified above. A `404` from a wrong base URL
+or an old backend has already been misdiagnosed as a Docker networking problem.
 
 `AppViewModel.login()` already distinguishes the two correctly and maps status codes to specific
 copy — the same pattern applied to `loadData()` would resolve this.

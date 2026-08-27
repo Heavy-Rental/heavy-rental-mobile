@@ -89,12 +89,19 @@ Feature: Deliveries
     Then the booking status is unchanged
     And no successful domain transition is applied
 
-  Scenario: API failure still updates locally
+  Scenario: Unreachable API still updates locally (HR-93)
     Given a confirmed delivery
     When the operator mobilises it
-    And the PATCH call fails
+    And the PATCH call fails with IOException (no HTTP response)
     Then the local status still becomes MOBILISED
     And a network error message is shown to the user
+
+  Scenario: HTTP rejection does not update locally (HR-93)
+    Given a confirmed delivery
+    When the operator mobilises it
+    And the PATCH call fails with HttpException (e.g. 400 or 403)
+    Then the local status remains CONFIRMED
+    And a network error message indicates the update was rejected
 ```
 
 Domain details: [domain/booking-status-machine.md](../domain/booking-status-machine.md).  
@@ -148,32 +155,20 @@ Contract: [api/heavyrental-openapi.yaml](../api/heavyrental-openapi.yaml), examp
 ## Known issues
 
 Recorded here rather than fixed. Each entry states a reproduction, a recommended fix, and its
-status, following the same convention as the backend's `SPEC-booking-delivery-return-api.md` §6.
+status, following the same convention as Spring `booking-delivery-return` known-gaps notes.
 
-### K1 — A multi-asset booking shows only one asset *(ticket: HR-113, client-side only)*
+### K1 — A multi-asset booking shows only one asset *(ticket: HR-113 — resolved)*
 
-`DeliveryItemResponse` carries a single `assetName`/`serialNumber` pair, but a backend `Booking`
-has one-to-many `booking_items`. The server picks one via
-`BookingMapper.primaryAsset()` → `min(BookingItem.id)` and **silently discards the rest**
-(`SPEC-booking-delivery-return-api.md` §5.3). This client faithfully renders whatever it is sent,
-so the loss is invisible in the UI.
+**Was:** delivery/return DTOs exposed a single `assetName`/`serialNumber`; Spring
+`BookingMapper.primaryAsset()` discarded extra `BookingItem` rows.
 
-**Reproduce:** backend seed booking `1` has two `BookingItem` rows (JLG 460SJ Boom Lift, Toyota
-8FD25 Forklift). `GET /api/deliveries` returns the boom lift only.
+**Now:** client `Booking` / `DeliveryItem` / `ReturnItem` carry `items: List<AssetLine>` and cards
+render every entry (HR-113). Spring `booking-delivery-return` **FR-BDR-007** requires all
+`BookingItem` rows in `items[]`. A single-asset payload is a backend defect against that spec,
+not documented mobile behaviour.
 
-**Operational consequence:** a driver loads one machine, marks the booking mobilised, and leaves the
-second on site. The app gives no indication a second asset exists.
-
-**Recommended fix:** contract change first — `assetName`/`serialNumber` become a list, or a separate
-`items` array is added — then both sides. Cannot be fixed client-side; the data never arrives.
-The backend spec records the same issue in its §6.2 with a matching recommendation.
-
-**Status:** client-side implemented (HR-113) — `Booking`/`DeliveryItem`/`ReturnItem` now carry
-`items: List<AssetLine>` and `DeliveryCard`/`ReturnCard` render every entry, not just the first
-(see `MockDataRepository` booking `1`, seeded with a boom lift and a forklift to exercise this).
-This fixes the model/DTO/UI half only — still blocked on the backend: `BookingMapper.primaryAsset()`
-(`SPEC-booking-delivery-return-api.md` §6.2) hasn't migrated to the `items` contract yet, so real
-API responses won't populate `items` until that lands.
+**Reproduce (historical):** seed booking `1` has two items (JLG 460SJ Boom Lift, Toyota 8FD25
+Forklift). After FR-BDR-007, `GET /api/deliveries` MUST return both.
 
 ### K2 — The `Qty: N` badge was removed *(ticket: HR-113, client-side only)*
 
@@ -186,7 +181,7 @@ N identical units of the same asset — `items: List<AssetLine>` can't assume th
 data has a boom lift *and* a forklift, not 2x the same machine), so a numeric badge with that old
 meaning would misinform a driver. Instead, each `AssetLine` now renders as its own full name/serial
 row unconditionally, so the count is visible directly from the card without a separate badge
-element. Still blocked on the backend the same way K1 is.
+element. K1's backend half is resolved (FR-BDR-007).
 
 ### K3 — Card rendering for out-of-range values *(ticket: TBD)*
 
@@ -199,7 +194,7 @@ Two cases where a card renders in a way that reads as broken rather than as data
   change was needed for this half of K3.
 - **Empty `items` → blank title.** Documented backend behaviour, not a client fault: a booking
   with no `BookingItem` rows maps to `items: []`
-  (`SPEC-booking-delivery-return-api.md` §5.3). The card previously rendered an empty heading.
+  (Spring empty `items` array). The card previously rendered an empty heading.
 
 **Fix (HR-93):** an empty `items` list falls back to `"Asset not specified"` / `"No serial number"`;
 a non-empty list falls back per-line via the same `ifBlank {}` pattern on each `AssetLine`'s

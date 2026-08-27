@@ -26,13 +26,13 @@ Kotlin: `enum class BookingStatus { PENDING_DEPOSIT, PENDING_CONFIRMED, CONFIRME
 Wire serialisation uses `newStatus.name` in `BookingRepository`.
 
 **Source of truth:** these six values mirror the backend `Booking.BookingStatus` enum
-(`SPEC-entity-repository.md` §6.2) and the `BookingStatus` schema in
+(Spring `entity-repository`) and the `BookingStatus` schema in
 [`heavyrental-openapi.yaml`](../api/heavyrental-openapi.yaml). All three must be changed together.
 
 ### `null` is a seventh case
 
 The domain field is `BookingStatus?`, not `BookingStatus`. `Mappers.kt` yields `null` when the wire
-value is absent (`Booking.status` is a nullable column — `SPEC-entity-repository.md` §5.7) **or**
+value is absent (`Booking.status` is a nullable column — Spring `entity-repository`) **or**
 unrecognised, rather than throwing and failing the entire response over one row.
 
 | Consumer | Behaviour on `null` |
@@ -127,9 +127,9 @@ only backend was Mockoon, which returns `200` to any request and **cannot** reje
 so the client's own preconditions were the only guard that existed, and applying locally was safe.
 
 The Spring backend enforces the same two transitions server-side and returns `400` on anything else
-(`SPEC-booking-delivery-return-api.md` §4, Requirements 4.2/6), and a driver's request returns `403`
-(`ROLE_DRIVER` excluded from protected routes, `SPEC-api-index.md` §4). Now that HR-78 points the
-app at it, the guards above are no longer the only ones — the server's guard can now say no after
+(Spring `booking-delivery-return` FR-BDR-004/006). `ROLE_DRIVER` is **allowed** on these routes;
+`403` is for `ROLE_USER` (or missing auth), not a blanket driver lock-out. Now that HR-78 points the
+app at Spring, the guards above are no longer the only ones — the server's guard can now say no after
 the client's guard already said yes.
 
 **Decision (HR-93):** split by failure type. `AppViewModel.updateBookingStatus` now applies the

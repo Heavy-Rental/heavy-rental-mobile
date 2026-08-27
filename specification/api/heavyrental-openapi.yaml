@@ -15,7 +15,7 @@ info:
       — deliveries has no equivalent notes field.
     - Auth is an interim → access JWT handshake (getBearerToken → login/google → logout).
       Contract mirrors heavy-rental-spring-rest-api's
-      specification/SPEC-auth-login-logout.md, which is the source of truth for
+      openspec/specs/auth-login-logout/, which is the source of truth for
       server-side behaviour (password verification, denylist, token claims).
       **The local Mockoon mock only returns static canned responses for
       getBearerToken/login/logout** — it does not verify credentials or issue
@@ -50,7 +50,7 @@ paths:
         (`text/plain`), not JSON. See specification/product/01-login.md.
 
         Full contract owned by heavy-rental-spring-rest-api's
-        SPEC-request-bearer-token.md — this mock only returns a fixed
+        openspec/specs/auth-interim-token/ — this mock only returns a fixed
         placeholder token, it does not sign real JWTs.
       responses:
         "200":
@@ -70,7 +70,7 @@ paths:
         Step 2 of login. Requires the interim JWT from getBearerToken as a
         Bearer token, plus email/password in the body. See
         specification/product/01-login.md and, for full server behaviour,
-        heavy-rental-spring-rest-api's SPEC-auth-login-logout.md §6.1.
+        heavy-rental-spring-rest-api's openspec/specs/auth-login-logout/.
 
         **Mock caveat:** this Mockoon route returns the same canned 200
         response for any request body — it does not check the password or the
@@ -129,8 +129,9 @@ paths:
         specification/product/01-login.md ("Google Sign-In" section) and, for
         full server behaviour, heavy-rental-spring-rest-api's AuthService.
 
-        Auto-provisions a ROLE_USER account on first sign-in with a given
-        email; links to an existing account by email otherwise.
+        Auto-provisions a ROLE_DRIVER account on first sign-in with a given
+        email (never ROLE_ADMIN); links to an existing account by email otherwise
+        without changing its role. See Spring FR-AUTH-L-001b.
 
         **Not implemented on Mockoon/Prism** — this route does not exist on
         the mock; test only against the real Spring Boot backend.
@@ -183,7 +184,7 @@ paths:
       summary: Revoke the current access JWT
       description: |
         Step 4 of the flow. Requires the access JWT (from login) as a Bearer
-        token. See heavy-rental-spring-rest-api's SPEC-auth-login-logout.md §6.2.
+        token. See heavy-rental-spring-rest-api's openspec/specs/auth-login-logout/.
 
         **Mock caveat:** this Mockoon route always returns 200 — it does not
         validate or actually revoke the Bearer token.
@@ -482,7 +483,7 @@ components:
     Booking:
       type: object
       description: >
-        Nullability follows the backend column definitions (SPEC-entity-repository.md §5.7):
+        Nullability follows the backend column definitions (Spring entity-repository):
         customer, start_date, end_date, status, site_address and delivery_notes are all
         nullable, so the key is always present but its value may be null. Clients must
         tolerate null rather than failing the whole response. `items` reflects the one-to-many
